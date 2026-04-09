@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "Money Pull-up"
+version = "1.0.0"
+id = "artifacts/money-pullup"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 19298
+
+[services.development]
+run = "pnpm --filter @workspace/money-pullup run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/money-pullup", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/money-pullup", "run", "serve" ]
+
+[services.env]
+PORT = "19298"
+BASE_PATH = "/"

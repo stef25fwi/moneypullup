@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "BdRJqsiwPEGrJrWPW648I"
+uri = "file://artifacts/money-pullup/assets/images/icon.png"
+type = "image"
+title = "DJ tips app icon"
