@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlowBackground } from "@/components/GlowBackground";
 import { GlassCard } from "@/components/GlassCard";
 import { TipNotification } from "@/components/TipNotification";
+import { DJWalletModal } from "@/components/DJWalletModal";
 import { useTips, SocialLinks, Tip } from "@/contexts/TipsContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
@@ -91,8 +92,8 @@ export default function DJScreen() {
   const insets = useSafeAreaInsets();
   const {
     djs, currentDJName, setCurrentDJName,
-    getTipsForDJ, getPendingTipsForDJ, getDJBalance,
-    acceptTip, updateDJSocialLinks,
+    getTipsForDJ, getPendingTipsForDJ, getDJBalance, getDJAvailableBalance,
+    acceptTip, updateDJSocialLinks, toggleDJLive,
   } = useTips();
 
   const [activeDJId, setActiveDJId] = useState("dj1");
@@ -100,6 +101,7 @@ export default function DJScreen() {
   const [nameInput, setNameInput] = useState(currentDJName);
   const [editingSocial, setEditingSocial] = useState(false);
   const [socialDraft, setSocialDraft] = useState<SocialLinks>({ instagram: "", tiktok: "", facebook: "" });
+  const [walletOpen, setWalletOpen] = useState(false);
 
   const myDj = djs.find((d) => d.id === activeDJId);
   const myTips = getTipsForDJ(activeDJId);
@@ -175,10 +177,36 @@ export default function DJScreen() {
             >
               <Feather name={isDark ? "sun" : "moon"} size={16} color={isDark ? colors.gold : colors.violet} />
             </TouchableOpacity>
-            <View style={[styles.liveChip, { backgroundColor: myDj?.isLive ? colors.neonPink : colors.muted }]}>
+
+            {/* Wallet button */}
+            <TouchableOpacity
+              onPress={() => setWalletOpen(true)}
+              style={[styles.walletBtn, { backgroundColor: colors.glassBackground, borderColor: colors.gold }]}
+            >
+              <MaterialCommunityIcons name="wallet" size={18} color={colors.gold} />
+              <Text style={[styles.walletBtnText, { color: colors.gold }]}>
+                {getDJAvailableBalance(activeDJId).toFixed(0)}€
+              </Text>
+            </TouchableOpacity>
+
+            {/* Live toggle */}
+            <TouchableOpacity
+              onPress={() => {
+                toggleDJLive(activeDJId);
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              }}
+              activeOpacity={0.85}
+              style={[
+                styles.liveToggle,
+                { backgroundColor: myDj?.isLive ? "#FF2D78" : colors.glassBackground, borderColor: myDj?.isLive ? "#FF2D78" : colors.glassBorder },
+              ]}
+            >
               {myDj?.isLive && <View style={styles.livePulse} />}
-              <Text style={styles.liveChipText}>{myDj?.isLive ? "EN DIRECT" : "HORS LIGNE"}</Text>
-            </View>
+              <Text style={[styles.liveChipText, { color: myDj?.isLive ? "#fff" : colors.mutedForeground }]}>
+                {myDj?.isLive ? "EN DIRECT" : "OFFLINE"}
+              </Text>
+              <Feather name="radio" size={12} color={myDj?.isLive ? "#fff" : colors.mutedForeground} />
+            </TouchableOpacity>
           </View>
         </View>
 
