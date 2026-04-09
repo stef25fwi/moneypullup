@@ -4,9 +4,10 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from "react";
+
+export type TipStatus = "pending" | "accepted";
 
 export interface Tip {
   id: string;
@@ -16,6 +17,13 @@ export interface Tip {
   timestamp: Date;
   djId: string;
   djName: string;
+  status: TipStatus;
+}
+
+export interface SocialLinks {
+  instagram: string;
+  tiktok: string;
+  facebook: string;
 }
 
 export interface DJ {
@@ -24,6 +32,12 @@ export interface DJ {
   genre: string;
   isLive: boolean;
   totalTipsToday: number;
+  avatar: string;
+  socialLinks: SocialLinks;
+}
+
+export interface FanProfile {
+  name: string;
   avatar: string;
 }
 
@@ -40,15 +54,22 @@ interface TipsContextType {
   isStripeModalVisible: boolean;
   isDJMode: boolean;
   currentDJName: string;
+  fanProfile: FanProfile;
   addFunds: (amount: number) => void;
   sendTip: (djId: string, amount: number, message: string) => boolean;
+  acceptTip: (tipId: string) => void;
   setSelectedDj: (dj: DJ | null) => void;
   openStripeModal: () => void;
   closeStripeModal: () => void;
   toggleDJMode: () => void;
   setCurrentDJName: (name: string) => void;
+  updateDJSocialLinks: (djId: string, links: SocialLinks) => void;
+  updateFanProfile: (profile: Partial<FanProfile>) => void;
   getTipsForDJ: (djId: string) => Tip[];
+  getPendingTipsForDJ: (djId: string) => Tip[];
   getDJBalance: (djId: string) => number;
+  getFavoriteDJs: () => DJ[];
+  searchDJs: (query: string) => DJ[];
 }
 
 const TipsContext = createContext<TipsContextType | undefined>(undefined);
@@ -61,6 +82,7 @@ const INITIAL_DJS: DJ[] = [
     isLive: true,
     totalTipsToday: 0,
     avatar: "🎧",
+    socialLinks: { instagram: "@djmasterbeat", tiktok: "@djmasterbeat", facebook: "DJMasterBeat" },
   },
   {
     id: "dj2",
@@ -69,6 +91,7 @@ const INITIAL_DJS: DJ[] = [
     isLive: true,
     totalTipsToday: 0,
     avatar: "🎵",
+    socialLinks: { instagram: "@djviper", tiktok: "@djviper_official", facebook: "" },
   },
   {
     id: "dj3",
@@ -77,11 +100,32 @@ const INITIAL_DJS: DJ[] = [
     isLive: false,
     totalTipsToday: 0,
     avatar: "🌙",
+    socialLinks: { instagram: "@djluna", tiktok: "", facebook: "DJLunaOfficial" },
+  },
+  {
+    id: "dj4",
+    name: "DJ STORM",
+    genre: "Drum & Bass",
+    isLive: false,
+    totalTipsToday: 0,
+    avatar: "⚡",
+    socialLinks: { instagram: "", tiktok: "@djstorm", facebook: "" },
+  },
+  {
+    id: "dj5",
+    name: "DJ PHOENIX",
+    genre: "Progressive House",
+    isLive: false,
+    totalTipsToday: 0,
+    avatar: "🔥",
+    socialLinks: { instagram: "@djphoenix", tiktok: "@djphoenix_music", facebook: "DJPhoenixMusic" },
   },
 ];
 
 const STORAGE_KEY_WALLET = "@moneypullup/wallet";
 const STORAGE_KEY_TIPS = "@moneypullup/tips";
+const STORAGE_KEY_DJS = "@moneypullup/djs";
+const STORAGE_KEY_FAN = "@moneypullup/fan";
 
 export function TipsProvider({ children }: { children: React.ReactNode }) {
   const [wallet, setWallet] = useState<WalletState>({ balance: 0, currency: "EUR" });
@@ -91,137 +135,137 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
   const [isStripeModalVisible, setIsStripeModalVisible] = useState(false);
   const [isDJMode, setIsDJMode] = useState(false);
   const [currentDJName, setCurrentDJName] = useState("DJ MASTER BEAT");
+  const [fanProfile, setFanProfile] = useState<FanProfile>({ name: "Fan", avatar: "🎤" });
 
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
       try {
-        const storedWallet = await AsyncStorage.getItem(STORAGE_KEY_WALLET);
-        if (storedWallet) {
-          setWallet(JSON.parse(storedWallet));
+        const [w, t, d, f] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEY_WALLET),
+          AsyncStorage.getItem(STORAGE_KEY_TIPS),
+          AsyncStorage.getItem(STORAGE_KEY_DJS),
+          AsyncStorage.getItem(STORAGE_KEY_FAN),
+        ]);
+        if (w) setWallet(JSON.parse(w));
+        if (t) {
+          const parsed = JSON.parse(t) as Tip[];
+          setTips(parsed.map((tip) => ({ ...tip, timestamp: new Date(tip.timestamp), status: tip.status ?? "accepted" })));
         }
-        const storedTips = await AsyncStorage.getItem(STORAGE_KEY_TIPS);
-        if (storedTips) {
-          const parsed = JSON.parse(storedTips) as Tip[];
-          const withDates = parsed.map((t) => ({
-            ...t,
-            timestamp: new Date(t.timestamp),
+        if (d) {
+          const parsed = JSON.parse(d) as DJ[];
+          setDjs((prev) => prev.map((dj) => {
+            const saved = parsed.find((p) => p.id === dj.id);
+            return saved ? { ...dj, ...saved } : dj;
           }));
-          setTips(withDates);
         }
-      } catch {
-        // ignore
-      }
+        if (f) setFanProfile(JSON.parse(f));
+      } catch { /* ignore */ }
     };
-    loadData();
+    load();
   }, []);
 
-  const persistWallet = useCallback(async (w: WalletState) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY_WALLET, JSON.stringify(w));
-    } catch {
-      // ignore
-    }
+  const persist = useCallback(async (key: string, value: unknown) => {
+    try { await AsyncStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
   }, []);
 
-  const persistTips = useCallback(async (t: Tip[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY_TIPS, JSON.stringify(t));
-    } catch {
-      // ignore
-    }
-  }, []);
+  const addFunds = useCallback((amount: number) => {
+    setWallet((prev) => {
+      const updated = { ...prev, balance: prev.balance + amount };
+      persist(STORAGE_KEY_WALLET, updated);
+      return updated;
+    });
+  }, [persist]);
 
-  const addFunds = useCallback(
-    (amount: number) => {
-      setWallet((prev) => {
-        const updated = { ...prev, balance: prev.balance + amount };
-        persistWallet(updated);
-        return updated;
-      });
-    },
-    [persistWallet]
-  );
+  const sendTip = useCallback((djId: string, amount: number, message: string): boolean => {
+    if (wallet.balance < amount) return false;
+    const dj = djs.find((d) => d.id === djId);
+    if (!dj) return false;
 
-  const sendTip = useCallback(
-    (djId: string, amount: number, message: string): boolean => {
-      if (wallet.balance < amount) return false;
+    const newTip: Tip = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      amount,
+      fromName: fanProfile.name,
+      message,
+      timestamp: new Date(),
+      djId,
+      djName: dj.name,
+      status: "pending",
+    };
 
-      const dj = djs.find((d) => d.id === djId);
-      if (!dj) return false;
+    setWallet((prev) => {
+      const updated = { ...prev, balance: prev.balance - amount };
+      persist(STORAGE_KEY_WALLET, updated);
+      return updated;
+    });
 
-      const newTip: Tip = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        amount,
-        fromName: "Toi",
-        message,
-        timestamp: new Date(),
-        djId,
-        djName: dj.name,
-      };
+    setTips((prev) => {
+      const updated = [newTip, ...prev];
+      persist(STORAGE_KEY_TIPS, updated);
+      return updated;
+    });
 
-      setWallet((prev) => {
-        const updated = { ...prev, balance: prev.balance - amount };
-        persistWallet(updated);
-        return updated;
-      });
+    setDjs((prev) =>
+      prev.map((d) => d.id === djId ? { ...d, totalTipsToday: d.totalTipsToday + amount } : d)
+    );
 
-      setTips((prev) => {
-        const updated = [newTip, ...prev];
-        persistTips(updated);
-        return updated;
-      });
+    return true;
+  }, [wallet.balance, djs, fanProfile.name, persist]);
 
-      setDjs((prev) =>
-        prev.map((d) =>
-          d.id === djId
-            ? { ...d, totalTipsToday: d.totalTipsToday + amount }
-            : d
-        )
-      );
+  const acceptTip = useCallback((tipId: string) => {
+    setTips((prev) => {
+      const updated = prev.map((t) => t.id === tipId ? { ...t, status: "accepted" as TipStatus } : t);
+      persist(STORAGE_KEY_TIPS, updated);
+      return updated;
+    });
+  }, [persist]);
 
-      return true;
-    },
-    [wallet.balance, djs, persistWallet, persistTips]
-  );
+  const updateDJSocialLinks = useCallback((djId: string, links: SocialLinks) => {
+    setDjs((prev) => {
+      const updated = prev.map((d) => d.id === djId ? { ...d, socialLinks: links } : d);
+      persist(STORAGE_KEY_DJS, updated);
+      return updated;
+    });
+  }, [persist]);
 
-  const getTipsForDJ = useCallback(
-    (djId: string) => tips.filter((t) => t.djId === djId),
-    [tips]
-  );
+  const updateFanProfile = useCallback((profile: Partial<FanProfile>) => {
+    setFanProfile((prev) => {
+      const updated = { ...prev, ...profile };
+      persist(STORAGE_KEY_FAN, updated);
+      return updated;
+    });
+  }, [persist]);
 
-  const getDJBalance = useCallback(
-    (djId: string) =>
-      tips
-        .filter((t) => t.djId === djId)
-        .reduce((sum, t) => sum + t.amount, 0),
-    [tips]
-  );
+  const getTipsForDJ = useCallback((djId: string) => tips.filter((t) => t.djId === djId), [tips]);
+  const getPendingTipsForDJ = useCallback((djId: string) => tips.filter((t) => t.djId === djId && t.status === "pending"), [tips]);
+  const getDJBalance = useCallback((djId: string) => tips.filter((t) => t.djId === djId && t.status === "accepted").reduce((s, t) => s + t.amount, 0), [tips]);
 
-  const openStripeModal = useCallback(() => setIsStripeModalVisible(true), []);
-  const closeStripeModal = useCallback(() => setIsStripeModalVisible(false), []);
-  const toggleDJMode = useCallback(() => setIsDJMode((prev) => !prev), []);
+  const getFavoriteDJs = useCallback((): DJ[] => {
+    const counts: Record<string, number> = {};
+    tips.forEach((t) => { counts[t.djId] = (counts[t.djId] || 0) + t.amount; });
+    return djs
+      .filter((d) => counts[d.id])
+      .sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0));
+  }, [tips, djs]);
+
+  const searchDJs = useCallback((query: string): DJ[] => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return djs.filter(
+      (d) => d.name.toLowerCase().includes(q) || d.genre.toLowerCase().includes(q)
+    );
+  }, [djs]);
 
   return (
-    <TipsContext.Provider
-      value={{
-        wallet,
-        tips,
-        djs,
-        selectedDj,
-        isStripeModalVisible,
-        isDJMode,
-        currentDJName,
-        addFunds,
-        sendTip,
-        setSelectedDj,
-        openStripeModal,
-        closeStripeModal,
-        toggleDJMode,
-        setCurrentDJName,
-        getTipsForDJ,
-        getDJBalance,
-      }}
-    >
+    <TipsContext.Provider value={{
+      wallet, tips, djs, selectedDj, isStripeModalVisible, isDJMode, currentDJName, fanProfile,
+      addFunds, sendTip, acceptTip, setSelectedDj,
+      openStripeModal: () => setIsStripeModalVisible(true),
+      closeStripeModal: () => setIsStripeModalVisible(false),
+      toggleDJMode: () => setIsDJMode((p) => !p),
+      setCurrentDJName,
+      updateDJSocialLinks, updateFanProfile,
+      getTipsForDJ, getPendingTipsForDJ, getDJBalance, getFavoriteDJs, searchDJs,
+    }}>
       {children}
     </TipsContext.Provider>
   );

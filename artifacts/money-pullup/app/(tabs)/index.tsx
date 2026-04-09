@@ -51,6 +51,7 @@ export default function FanScreen() {
   const [message, setMessage] = useState("");
   const [showCustom, setShowCustom] = useState(false);
   const [lastSentSuccess, setLastSentSuccess] = useState(false);
+  const [lastSentDjName, setLastSentDjName] = useState("");
 
   const sendBtnScale = useSharedValue(1);
 
@@ -86,8 +87,9 @@ export default function FanScreen() {
         withSpring(1, { damping: 10 })
       );
       setLastSentSuccess(true);
+      setLastSentDjName(selectedDj.name);
       setMessage("");
-      setTimeout(() => setLastSentSuccess(false), 2000);
+      setTimeout(() => setLastSentSuccess(false), 3000);
     }
   }, [selectedDj, effectiveAmount, wallet.balance, sendTip, message, sendBtnScale, openStripeModal]);
 
@@ -275,6 +277,16 @@ export default function FanScreen() {
             </TouchableOpacity>
           </Animated.View>
 
+          {lastSentSuccess && (
+            <GlassCard style={[styles.pendingBanner, { borderColor: "#F59E0B" }]} borderColor="#F59E0B">
+              <MaterialCommunityIcons name="clock-check-outline" size={18} color="#F59E0B" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.pendingBannerTitle, { color: colors.foreground }]}>Tip envoyé à {lastSentDjName}</Text>
+                <Text style={[styles.pendingBannerSub, { color: "#F59E0B" }]}>En attente d'acceptation par le DJ</Text>
+              </View>
+            </GlassCard>
+          )}
+
           {wallet.balance < 5 && (
             <TouchableOpacity
               onPress={openStripeModal}
@@ -330,4 +342,7 @@ const styles = StyleSheet.create({
   sendBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", letterSpacing: 1.5 },
   rechargeBar: { flexDirection: "row", alignItems: "center", gap: 8, padding: 14, borderRadius: 14, borderWidth: 1 },
   rechargeText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
+  pendingBanner: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, marginBottom: 12 },
+  pendingBannerTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  pendingBannerSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
 });

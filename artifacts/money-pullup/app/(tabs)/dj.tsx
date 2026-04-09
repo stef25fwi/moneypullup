@@ -1,7 +1,8 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useState } from "react";
 import {
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -10,32 +11,103 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+  FadeIn,
+  FadeOut,
+  Layout,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GlowBackground } from "@/components/GlowBackground";
 import { GlassCard } from "@/components/GlassCard";
 import { TipNotification } from "@/components/TipNotification";
-import { useTips } from "@/contexts/TipsContext";
+import { useTips, SocialLinks, Tip } from "@/contexts/TipsContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
+
+function AcceptTipCard({ tip, onAccept }: { tip: Tip; onAccept: (id: string) => void }) {
+  const colors = useColors();
+  const scale = useSharedValue(1);
+
+  const handleAccept = () => {
+    scale.value = withSequence(withSpring(0.94, { damping: 8 }), withSpring(1.06, { damping: 8 }), withSpring(1, { damping: 10 }));
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setTimeout(() => onAccept(tip.id), 250);
+  };
+
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const isLarge = tip.amount >= 30;
+  const isHuge = tip.amount >= 50;
+  const glowColor = isHuge ? colors.gold : isLarge ? colors.accent : colors.violet;
+
+  return (
+    <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)} layout={Layout.springify()}>
+      <GlassCard style={[styles.pendingCard, { borderColor: glowColor }]} borderColor={glowColor} intensity={55}>
+        <View style={styles.pendingTop}>
+          <View style={[styles.pendingAmountBadge, { backgroundColor: glowColor }]}>
+            <Text style={[styles.pendingAmount, { color: glowColor === colors.gold ? "#000" : "#fff" }]}>
+              +{tip.amount}€
+            </Text>
+          </View>
+          <View style={styles.pendingInfo}>
+            <Text style={[styles.pendingFrom, { color: colors.foreground }]}>{tip.fromName}</Text>
+            {tip.message ? (
+              <Text style={[styles.pendingMessage, { color: colors.mutedForeground }]} numberOfLines={1}>
+                "{tip.message}"
+              </Text>
+            ) : null}
+          </View>
+          <View style={[styles.pendingChip, { backgroundColor: "#F59E0B22", borderColor: "#F59E0B" }]}>
+            <Text style={[styles.pendingChipText, { color: "#F59E0B" }]}>EN ATTENTE</Text>
+          </View>
+        </View>
+
+        <Animated.View style={animStyle}>
+          <TouchableOpacity
+            onPress={handleAccept}
+            style={[styles.acceptBtn, { backgroundColor: glowColor, shadowColor: glowColor }]}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons name="cash-check" size={20} color={glowColor === colors.gold ? "#000" : "#fff"} />
+            <Text style={[styles.acceptBtnText, { color: glowColor === colors.gold ? "#000" : "#fff" }]}>
+              ACCEPTER LE MONEY PULL-UP
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </GlassCard>
+    </Animated.View>
+  );
+}
 
 export default function DJScreen() {
   const colors = useColors();
   const { toggleTheme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { djs, currentDJName, setCurrentDJName, getTipsForDJ, getDJBalance } = useTips();
+  const {
+    djs, currentDJName, setCurrentDJName,
+    getTipsForDJ, getPendingTipsForDJ, getDJBalance,
+    acceptTip, updateDJSocialLinks,
+  } = useTips();
 
   const [activeDJId, setActiveDJId] = useState("dj1");
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(currentDJName);
+  const [editingSocial, setEditingSocial] = useState(false);
+  const [socialDraft, setSocialDraft] = useState<SocialLinks>({ instagram: "", tiktok: "", facebook: "" });
 
-  const myTips = getTipsForDJ(activeDJId);
-  const myBalance = getDJBalance(activeDJId);
   const myDj = djs.find((d) => d.id === activeDJId);
-
-  const totalTips = myTips.length;
-  const avgTip = totalTips > 0 ? myBalance / totalTips : 0;
-  const biggestTip = totalTips > 0 ? Math.max(...myTips.map((t) => t.amount)) : 0;
+  const myTips = getTipsForDJ(activeDJId);
+  const pendingTips = getPendingTipsForDJ(activeDJId);
+  const acceptedTips = myTips.filter((t) => t.status === "accepted");
+  const myBalance = getDJBalance(activeDJId);
+  const avgTip = acceptedTips.length > 0 ? myBalance / acceptedTips.length : 0;
+  const biggestTip = acceptedTips.length > 0 ? Math.max(...acceptedTips.map((t) => t.amount)) : 0;
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
 
@@ -43,6 +115,17 @@ export default function DJScreen() {
     if (nameInput.trim()) setCurrentDJName(nameInput.trim().toUpperCase());
     setEditingName(false);
   }, [nameInput, setCurrentDJName]);
+
+  const handleEditSocial = useCallback(() => {
+    setSocialDraft(myDj?.socialLinks ?? { instagram: "", tiktok: "", facebook: "" });
+    setEditingSocial(true);
+  }, [myDj]);
+
+  const handleSaveSocial = useCallback(() => {
+    updateDJSocialLinks(activeDJId, socialDraft);
+    setEditingSocial(false);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [activeDJId, socialDraft, updateDJSocialLinks]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -60,7 +143,7 @@ export default function DJScreen() {
       >
         {/* Header */}
         <View style={styles.headerRow}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={[styles.modeLabel, { color: colors.violet }]}>MODE DJ</Text>
             {editingName ? (
               <View style={styles.nameEditRow}>
@@ -102,12 +185,9 @@ export default function DJScreen() {
         {/* DJ Switcher */}
         <View style={styles.djSwitcher}>
           {djs.map((dj) => (
-            <TouchableOpacity key={dj.id} onPress={() => setActiveDJId(dj.id)}>
+            <TouchableOpacity key={dj.id} onPress={() => setActiveDJId(dj.id)} style={{ flex: 1 }}>
               <GlassCard
-                style={[
-                  styles.djTab,
-                  { borderColor: activeDJId === dj.id ? colors.violet : colors.glassBorder },
-                ]}
+                style={[styles.djTab, { borderColor: activeDJId === dj.id ? colors.violet : colors.glassBorder }]}
                 borderColor={activeDJId === dj.id ? colors.violet : colors.glassBorder}
                 intensity={activeDJId === dj.id ? 60 : 30}
               >
@@ -124,56 +204,167 @@ export default function DJScreen() {
         <GlassCard style={[styles.balanceCard, { borderColor: colors.gold }]} borderColor={colors.gold} intensity={50}>
           <View style={styles.balanceTop}>
             <View>
-              <Text style={[styles.balanceLabel, { color: colors.mutedForeground }]}>Total reçu ce soir</Text>
+              <Text style={[styles.balanceLabel, { color: colors.mutedForeground }]}>Total accepté ce soir</Text>
               <Text style={[styles.balanceAmount, { color: colors.gold }]}>{myBalance.toFixed(2)}€</Text>
             </View>
             <MaterialCommunityIcons name="cash-multiple" size={40} color={colors.gold} style={{ opacity: 0.6 }} />
           </View>
-
           <View style={[styles.statsRow, { borderTopColor: colors.glassBorder, borderTopWidth: 1 }]}>
             <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.primary }]}>{totalTips}</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Tips</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{acceptedTips.length}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Acceptés</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.glassBorder }]} />
             <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.accent }]}>{avgTip.toFixed(0)}€</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Moyenne</Text>
+              <Text style={[styles.statValue, { color: "#F59E0B" }]}>{pendingTips.length}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>En attente</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.glassBorder }]} />
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.neonPink }]}>{biggestTip > 0 ? `${biggestTip}€` : "—"}</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Max</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Record</Text>
             </View>
           </View>
         </GlassCard>
 
-        {/* Tips feed */}
+        {/* Social Links */}
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>LIENS SOCIAUX</Text>
+        <GlassCard style={styles.socialCard}>
+          {editingSocial ? (
+            <>
+              <SocialInput
+                icon="instagram"
+                placeholder="@votre_instagram"
+                value={socialDraft.instagram}
+                onChangeText={(t) => setSocialDraft((p) => ({ ...p, instagram: t }))}
+                colors={colors}
+              />
+              <SocialInput
+                icon="tiktok"
+                placeholder="@votre_tiktok"
+                value={socialDraft.tiktok}
+                onChangeText={(t) => setSocialDraft((p) => ({ ...p, tiktok: t }))}
+                colors={colors}
+              />
+              <SocialInput
+                icon="facebook"
+                placeholder="Votre page Facebook"
+                value={socialDraft.facebook}
+                onChangeText={(t) => setSocialDraft((p) => ({ ...p, facebook: t }))}
+                colors={colors}
+              />
+              <TouchableOpacity
+                onPress={handleSaveSocial}
+                style={[styles.saveSocialBtn, { backgroundColor: colors.violet }]}
+              >
+                <Feather name="check" size={16} color="#fff" />
+                <Text style={styles.saveSocialText}>Enregistrer</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <SocialRow icon="instagram" value={myDj?.socialLinks.instagram} colors={colors} color="#E1306C" />
+              <SocialRow icon="tiktok" value={myDj?.socialLinks.tiktok} colors={colors} color="#000000" />
+              <SocialRow icon="facebook" value={myDj?.socialLinks.facebook} colors={colors} color="#1877F2" />
+              <TouchableOpacity onPress={handleEditSocial} style={styles.editSocialBtn}>
+                <Feather name="edit-2" size={14} color={colors.violet} />
+                <Text style={[styles.editSocialText, { color: colors.violet }]}>Modifier les liens</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </GlassCard>
+
+        {/* Pending tips — ACCEPTER LE MONEY PULL-UP */}
+        {pendingTips.length > 0 && (
+          <>
+            <View style={styles.feedHeader}>
+              <Text style={[styles.sectionLabel, { color: "#F59E0B" }]}>TIPS EN ATTENTE</Text>
+              <View style={[styles.countBadge, { backgroundColor: "#F59E0B" }]}>
+                <Text style={styles.countBadgeText}>{pendingTips.length}</Text>
+              </View>
+            </View>
+            <View style={styles.tipsList}>
+              {pendingTips.map((tip) => (
+                <AcceptTipCard key={tip.id} tip={tip} onAccept={acceptTip} />
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* Accepted tips feed */}
         <View style={styles.feedHeader}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>TIPS REÇUS</Text>
-          {myTips.length > 0 && (
-            <View style={[styles.countBadge, { backgroundColor: colors.neonPink }]}>
-              <Text style={styles.countBadgeText}>{myTips.length}</Text>
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>TIPS ACCEPTÉS</Text>
+          {acceptedTips.length > 0 && (
+            <View style={[styles.countBadge, { backgroundColor: colors.neonGreen }]}>
+              <Text style={styles.countBadgeText}>{acceptedTips.length}</Text>
             </View>
           )}
         </View>
 
-        {myTips.length === 0 ? (
+        {acceptedTips.length === 0 ? (
           <GlassCard style={styles.emptyState}>
             <MaterialCommunityIcons name="cash-remove" size={40} color={colors.mutedForeground} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Pas encore de tips</Text>
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Pas encore de tips acceptés</Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Les fans peuvent vous envoyer des tips depuis l'onglet Fan
+              Les fans envoient des tips depuis l'onglet Fan
             </Text>
           </GlassCard>
         ) : (
           <View style={styles.tipsList}>
-            {myTips.map((tip, index) => (
+            {acceptedTips.map((tip, index) => (
               <TipNotification key={tip.id} tip={tip} index={index} />
             ))}
           </View>
         )}
       </ScrollView>
+    </View>
+  );
+}
+
+function SocialInput({
+  icon, placeholder, value, onChangeText, colors,
+}: {
+  icon: "instagram" | "tiktok" | "facebook";
+  placeholder: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const iconColors: Record<string, string> = {
+    instagram: "#E1306C",
+    tiktok: colors.foreground,
+    facebook: "#1877F2",
+  };
+  return (
+    <View style={styles.socialInputRow}>
+      <FontAwesome5 name={icon} size={16} color={iconColors[icon]} style={{ width: 22 }} />
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.mutedForeground}
+        style={[styles.socialTextInput, { color: colors.foreground, borderColor: colors.glassBorder, backgroundColor: colors.glassBackground }]}
+        autoCapitalize="none"
+      />
+    </View>
+  );
+}
+
+function SocialRow({
+  icon, value, colors, color,
+}: {
+  icon: "instagram" | "tiktok" | "facebook";
+  value?: string;
+  colors: ReturnType<typeof useColors>;
+  color: string;
+}) {
+  const labels: Record<string, string> = { instagram: "Instagram", tiktok: "TikTok", facebook: "Facebook" };
+  return (
+    <View style={styles.socialRow}>
+      <FontAwesome5 name={icon} size={16} color={value ? color : colors.mutedForeground} style={{ width: 22 }} />
+      <Text style={[styles.socialRowText, { color: value ? colors.foreground : colors.mutedForeground }]}>
+        {value || `${labels[icon]} non renseigné`}
+      </Text>
     </View>
   );
 }
@@ -193,7 +384,7 @@ const styles = StyleSheet.create({
   livePulse: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#fff" },
   liveChipText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1.5 },
   djSwitcher: { flexDirection: "row", gap: 10, marginBottom: 20 },
-  djTab: { flex: 1, alignItems: "center", paddingVertical: 10, paddingHorizontal: 8, gap: 4, minWidth: 80 },
+  djTab: { alignItems: "center", paddingVertical: 10, paddingHorizontal: 4, gap: 4 },
   djTabAvatar: { fontSize: 20 },
   djTabName: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5, textAlign: "center" },
   balanceCard: { marginBottom: 24, overflow: "hidden" },
@@ -205,12 +396,36 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
   statLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   statDivider: { width: 1 },
+  sectionLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 2, marginBottom: 12 },
+  socialCard: { padding: 16, gap: 12, marginBottom: 24 },
+  socialRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 4 },
+  socialRowText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  socialInputRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  socialTextInput: { flex: 1, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, fontFamily: "Inter_400Regular" },
+  editSocialBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingTop: 4 },
+  editSocialText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  saveSocialBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12, marginTop: 4 },
+  saveSocialText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
   feedHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
-  sectionLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 2 },
   countBadge: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   countBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
-  emptyState: { alignItems: "center", gap: 12, paddingVertical: 48, paddingHorizontal: 24 },
+  pendingCard: { padding: 16, gap: 12, marginBottom: 8 },
+  pendingTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  pendingAmountBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+  pendingAmount: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  pendingInfo: { flex: 1 },
+  pendingFrom: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  pendingMessage: { fontSize: 12, fontFamily: "Inter_400Regular", fontStyle: "italic", marginTop: 2 },
+  pendingChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
+  pendingChipText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 },
+  acceptBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    paddingVertical: 14, borderRadius: 14,
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10, elevation: 6,
+  },
+  acceptBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", letterSpacing: 1 },
+  emptyState: { alignItems: "center", gap: 12, paddingVertical: 40, paddingHorizontal: 20 },
   emptyTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
-  tipsList: { gap: 4 },
+  tipsList: { gap: 8 },
 });
