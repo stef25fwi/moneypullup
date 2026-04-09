@@ -1,5 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
@@ -29,7 +30,13 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
 
 const PRESET_AMOUNTS = [5, 10, 15, 20];
-const BUTTON_COLORS = ["#FF6B35", "#4CAF50", "#2196F3", "#9C27B0"];
+
+const COIN_CONFIG = [
+  { color: "#E85C1A", highlightColor: "#FFA040", shadowColor: "#A02800" },
+  { color: "#27A84C", highlightColor: "#6FE87D", shadowColor: "#0F5C28" },
+  { color: "#1A72E8", highlightColor: "#56B8FF", shadowColor: "#0038BB" },
+  { color: "#8B22CC", highlightColor: "#CC66FF", shadowColor: "#5C0099" },
+];
 
 export default function FanScreen() {
   const colors = useColors();
@@ -52,14 +59,15 @@ export default function FanScreen() {
   const [showCustom, setShowCustom] = useState(false);
   const [lastSentSuccess, setLastSentSuccess] = useState(false);
   const [lastSentDjName, setLastSentDjName] = useState("");
+  const [showDjPicker, setShowDjPicker] = useState(false);
 
   const sendBtnScale = useSharedValue(1);
-
   const sendBtnStyle = useAnimatedStyle(() => ({
     transform: [{ scale: sendBtnScale.value }],
   }));
 
   const effectiveAmount = showCustom ? parseFloat(customAmount) || 0 : selectedAmount;
+  const liveDjs = djs.filter((d) => d.isLive);
 
   const handleSendTip = useCallback(() => {
     if (!selectedDj) return;
@@ -82,22 +90,22 @@ export default function FanScreen() {
     if (success) {
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       sendBtnScale.value = withSequence(
-        withSpring(0.9, { damping: 8 }),
-        withSpring(1.08, { damping: 8 }),
+        withSpring(0.88, { damping: 8 }),
+        withSpring(1.1, { damping: 8 }),
         withSpring(1, { damping: 10 })
       );
       setLastSentSuccess(true);
       setLastSentDjName(selectedDj.name);
       setMessage("");
-      setTimeout(() => setLastSentSuccess(false), 3000);
+      setTimeout(() => setLastSentSuccess(false), 3500);
     }
   }, [selectedDj, effectiveAmount, wallet.balance, sendTip, message, sendBtnScale, openStripeModal]);
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
-  const liveDjs = djs.filter((d) => d.isLive);
+  const bgColor = isDark ? "#0d0018" : "#f3eeff";
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
       <GlowBackground />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
@@ -105,100 +113,96 @@ export default function FanScreen() {
           contentContainerStyle={[
             styles.scroll,
             {
-              paddingTop: topPadding + 12,
+              paddingTop: topPadding + 8,
               paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 100,
             },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.headerRow}>
-            <View>
-              <Text style={[styles.appName, { color: colors.gold }]}>MONEY PULL-UP</Text>
-              <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
-                Envoyez des tips en direct
-              </Text>
-            </View>
-            <View style={styles.headerRight}>
-              {/* Theme toggle */}
-              <TouchableOpacity
-                onPress={() => {
-                  toggleTheme();
-                  if (Platform.OS !== "web") Haptics.selectionAsync();
-                }}
-                style={[styles.themeToggle, { backgroundColor: colors.glassBackground, borderColor: colors.glassBorder }]}
+          {/* Top bar: wallet + theme toggle */}
+          <View style={styles.topBar}>
+            <TouchableOpacity
+              onPress={() => {
+                toggleTheme();
+                if (Platform.OS !== "web") Haptics.selectionAsync();
+              }}
+              style={[styles.themeBtn, { backgroundColor: "rgba(255,255,255,0.12)", borderColor: "rgba(255,255,255,0.2)" }]}
+            >
+              <Feather name={isDark ? "sun" : "moon"} size={16} color={isDark ? "#FFD700" : "#8B5CF6"} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={openStripeModal}
+              style={styles.walletPill}
+            >
+              <LinearGradient
+                colors={["rgba(255,215,0,0.18)", "rgba(255,215,0,0.08)"]}
+                style={styles.walletGradient}
               >
-                <Feather name={isDark ? "sun" : "moon"} size={16} color={isDark ? colors.gold : colors.violet} />
-              </TouchableOpacity>
-              {/* Wallet */}
-              <TouchableOpacity
-                onPress={openStripeModal}
-                style={[styles.walletPill, { backgroundColor: colors.glassBackground, borderColor: colors.gold }]}
-              >
-                <Feather name="credit-card" size={14} color={colors.gold} />
-                <Text style={[styles.walletBalance, { color: colors.gold }]}>
-                  {wallet.balance.toFixed(2)}€
-                </Text>
-              </TouchableOpacity>
-            </View>
+                <Feather name="credit-card" size={14} color="#FFD700" />
+                <Text style={styles.walletBalance}>{wallet.balance.toFixed(2)}€</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
 
-          {/* DJ Selector */}
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>DJ EN DIRECT</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.djScroll}>
-            {liveDjs.map((dj) => {
-              const isSelected = selectedDj?.id === dj.id;
-              return (
-                <TouchableOpacity
-                  key={dj.id}
-                  onPress={() => setSelectedDj(dj)}
-                  activeOpacity={0.8}
-                >
-                  <GlassCard
-                    style={[
-                      styles.djCard,
-                      { borderColor: isSelected ? colors.primary : colors.glassBorder },
-                    ]}
-                    borderColor={isSelected ? colors.primary : colors.glassBorder}
-                    intensity={isSelected ? 60 : 35}
-                  >
-                    <View style={[styles.liveBadge, { backgroundColor: colors.neonPink }]}>
-                      <View style={styles.liveDot} />
-                      <Text style={styles.liveText}>LIVE</Text>
-                    </View>
-                    <Text style={styles.djAvatar}>{dj.avatar}</Text>
-                    <Text style={[styles.djName, { color: isSelected ? colors.primary : colors.foreground }]} numberOfLines={1}>
-                      {dj.name}
-                    </Text>
-                    <Text style={[styles.djGenre, { color: colors.mutedForeground }]}>{dj.genre}</Text>
-                    {dj.totalTipsToday > 0 && (
-                      <Text style={[styles.djTips, { color: colors.gold }]}>{dj.totalTipsToday}€ ce soir</Text>
-                    )}
-                  </GlassCard>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          {/* DJ Header Banner */}
+          <TouchableOpacity onPress={() => setShowDjPicker((v) => !v)} activeOpacity={0.85}>
+            <LinearGradient
+              colors={isDark ? ["#4A1280", "#6A22AA", "#3A0888"] : ["#7C3AED", "#9B59B6", "#6A1FC2"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.djBanner}
+            >
+              <MaterialCommunityIcons name="music-circle" size={22} color="rgba(255,255,255,0.7)" />
+              <Text style={styles.djBannerName} numberOfLines={1}>
+                {selectedDj ? selectedDj.name.toUpperCase() : "CHOISIR UN DJ"}
+              </Text>
+              {selectedDj?.isLive && (
+                <View style={styles.livePill}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>LIVE</Text>
+                </View>
+              )}
+              <Feather name={showDjPicker ? "chevron-up" : "chevron-down"} size={16} color="rgba(255,255,255,0.6)" style={{ marginLeft: "auto" }} />
+            </LinearGradient>
+          </TouchableOpacity>
 
-          {/* Selected DJ banner */}
-          {selectedDj && (
-            <GlassCard style={styles.selectedDjBanner}>
-              <MaterialCommunityIcons name="music-circle" size={20} color={colors.violet} />
-              <Text style={[styles.selectedDjText, { color: colors.foreground }]}>{selectedDj.name}</Text>
-              <View style={[styles.liveIndicator, { backgroundColor: colors.neonPink }]}>
-                <Text style={styles.liveIndicatorText}>LIVE</Text>
-              </View>
+          {/* DJ Picker dropdown */}
+          {showDjPicker && (
+            <GlassCard style={styles.djPicker}>
+              {liveDjs.map((dj) => {
+                const isSelected = selectedDj?.id === dj.id;
+                return (
+                  <TouchableOpacity
+                    key={dj.id}
+                    onPress={() => {
+                      setSelectedDj(dj);
+                      setShowDjPicker(false);
+                    }}
+                    style={[styles.djPickerRow, isSelected && { backgroundColor: "rgba(138,43,226,0.25)" }]}
+                  >
+                    <Text style={styles.djPickerAvatar}>{dj.avatar}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.djPickerName, { color: isSelected ? "#CC66FF" : colors.foreground }]}>
+                        {dj.name}
+                      </Text>
+                      <Text style={[styles.djPickerGenre, { color: colors.mutedForeground }]}>{dj.genre}</Text>
+                    </View>
+                    <View style={[styles.livePillSmall, { backgroundColor: "#FF2D78" }]}>
+                      <Text style={styles.liveTextSmall}>LIVE</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </GlassCard>
           )}
 
-          {/* Tip amount */}
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>VOTRE TIP</Text>
-          <Text style={[styles.bigAmount, { color: colors.primary }]}>
-            {effectiveAmount > 0 ? `${effectiveAmount}€` : "0€"}
+          {/* Coin buttons */}
+          <Text style={[styles.sectionLabel, { color: isDark ? "rgba(255,255,255,0.45)" : "rgba(80,0,160,0.5)" }]}>
+            CHOISISSEZ VOTRE TIP
           </Text>
-
-          <View style={styles.tipsRow}>
+          <View style={styles.coinsRow}>
             {PRESET_AMOUNTS.map((amt, i) => (
               <TipButton
                 key={amt}
@@ -209,92 +213,157 @@ export default function FanScreen() {
                   setShowCustom(false);
                   if (Platform.OS !== "web") Haptics.selectionAsync();
                 }}
-                color={BUTTON_COLORS[i]}
+                color={COIN_CONFIG[i].color}
+                highlightColor={COIN_CONFIG[i].highlightColor}
+                shadowColor={COIN_CONFIG[i].shadowColor}
               />
             ))}
           </View>
 
-          {/* Custom amount */}
-          <View style={styles.bottomActionsRow}>
-            <TouchableOpacity
-              onPress={() => setShowCustom((v) => !v)}
-              style={[
-                styles.enterAmountBtn,
-                { backgroundColor: showCustom ? colors.violet + "33" : colors.glassBackground, borderColor: showCustom ? colors.violet : colors.glassBorder },
-              ]}
+          {/* YOUR TIP label + neon amount box */}
+          <Text style={[styles.yourTipLabel, { color: isDark ? "rgba(255,255,255,0.7)" : "rgba(80,0,160,0.6)" }]}>
+            YOUR TIP
+          </Text>
+
+          <View style={styles.amountBoxWrapper}>
+            <LinearGradient
+              colors={isDark ? ["#1E0044", "#2A0060", "#180038"] : ["rgba(255,255,255,0.9)", "rgba(240,230,255,0.9)"]}
+              style={styles.amountBox}
             >
-              <MaterialCommunityIcons name="calculator" size={16} color={showCustom ? colors.violet : colors.mutedForeground} />
-              <Text style={[styles.enterAmountText, { color: showCustom ? colors.violet : colors.foreground }]}>
-                Montant libre
-              </Text>
-            </TouchableOpacity>
-            {showCustom && (
-              <TextInput
-                value={customAmount}
-                onChangeText={setCustomAmount}
-                placeholder="0"
-                placeholderTextColor={colors.mutedForeground}
-                keyboardType="numeric"
-                style={[
-                  styles.customInput,
-                  { backgroundColor: colors.glassBackground, color: colors.foreground, borderColor: colors.glassBorder },
-                ]}
-              />
-            )}
+              <View style={[styles.amountBorder, { borderColor: isDark ? "#FF2D78" : "#8B5CF6", shadowColor: isDark ? "#FF2D78" : "#8B5CF6" }]}>
+                <Text style={[styles.amountValue, { color: isDark ? "#FF2D78" : "#8B5CF6" }]}>
+                  {effectiveAmount > 0 ? `${effectiveAmount} €` : "0 €"}
+                </Text>
+              </View>
+            </LinearGradient>
           </View>
 
-          {/* Message */}
+          {/* Money Pull-up logo */}
+          <View style={styles.logoRow}>
+            <View style={styles.dollarIconWrapper}>
+              <LinearGradient colors={["#FFD700", "#FF8C00"]} style={styles.dollarCircle}>
+                <Text style={styles.dollarSign}>$</Text>
+              </LinearGradient>
+            </View>
+            <View>
+              <Text style={styles.logoMoney}>Money</Text>
+              <Text style={styles.logoPullup}>Pull-up</Text>
+            </View>
+          </View>
+
+          {/* Message input */}
           <TextInput
             value={message}
             onChangeText={setMessage}
             placeholder="Message pour le DJ... (optionnel)"
-            placeholderTextColor={colors.mutedForeground}
+            placeholderTextColor={isDark ? "rgba(200,170,255,0.4)" : "rgba(100,0,200,0.35)"}
             maxLength={60}
             style={[
               styles.messageInput,
-              { backgroundColor: colors.glassBackground, color: colors.foreground, borderColor: colors.glassBorder },
+              {
+                backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.65)",
+                color: colors.foreground,
+                borderColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(139,92,246,0.3)",
+              },
             ]}
           />
 
-          {/* Send button */}
-          <Animated.View style={sendBtnStyle}>
+          {/* Action buttons row */}
+          <View style={styles.actionRow}>
+            {/* Enter Amount */}
             <TouchableOpacity
-              onPress={handleSendTip}
-              disabled={!selectedDj || effectiveAmount <= 0}
+              onPress={() => {
+                setShowCustom((v) => !v);
+                if (Platform.OS !== "web") Haptics.selectionAsync();
+              }}
+              style={styles.actionBtnWrap}
+            >
+              <LinearGradient
+                colors={showCustom ? ["#7B22CC", "#5511AA"] : ["#3A1580", "#2A0D60"]}
+                style={styles.actionBtn}
+              >
+                <MaterialCommunityIcons name="calculator-variant" size={18} color="#fff" />
+                <Text style={styles.actionBtnLabel}>ENTER{"\n"}AMOUNT</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Send Tip */}
+            <Animated.View style={[styles.actionBtnWrap, styles.sendBtnWrapper, sendBtnStyle]}>
+              <TouchableOpacity
+                onPress={handleSendTip}
+                disabled={!selectedDj || effectiveAmount <= 0}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={
+                    lastSentSuccess
+                      ? ["#39FF14", "#22C55E"]
+                      : !selectedDj || effectiveAmount <= 0
+                      ? ["#555", "#333"]
+                      : ["#FF4466", "#CC1133"]
+                  }
+                  style={[styles.actionBtn, styles.sendBtnInner, {
+                    shadowColor: lastSentSuccess ? "#39FF14" : "#FF2D78",
+                  }]}
+                >
+                  <Feather name={lastSentSuccess ? "check-circle" : "zap"} size={20} color="#fff" />
+                  <Text style={[styles.actionBtnLabel, styles.sendBtnText]}>
+                    {lastSentSuccess ? "ENVOYÉ !" : "SEND TIP"}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Recharge / Favorites */}
+            <TouchableOpacity onPress={openStripeModal} style={styles.actionBtnWrap}>
+              <LinearGradient colors={["#CC7A00", "#AA5500"]} style={styles.actionBtn}>
+                <MaterialCommunityIcons name="heart-circle" size={18} color="#fff" />
+                <Text style={styles.actionBtnLabel}>RECHARGER</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* Custom amount input */}
+          {showCustom && (
+            <TextInput
+              value={customAmount}
+              onChangeText={setCustomAmount}
+              placeholder="Montant personnalisé €"
+              placeholderTextColor={isDark ? "rgba(200,170,255,0.4)" : "rgba(100,0,200,0.35)"}
+              keyboardType="numeric"
               style={[
-                styles.sendBtn,
+                styles.customInput,
                 {
-                  backgroundColor: lastSentSuccess ? colors.neonGreen : !selectedDj || effectiveAmount <= 0 ? colors.muted : colors.neonPink,
-                  shadowColor: lastSentSuccess ? colors.neonGreen : colors.neonPink,
+                  backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.65)",
+                  color: colors.foreground,
+                  borderColor: isDark ? "#8B5CF6" : "#7C3AED",
                 },
               ]}
-              activeOpacity={0.85}
-            >
-              <Feather name={lastSentSuccess ? "check" : "zap"} size={20} color={lastSentSuccess ? "#000" : "#fff"} />
-              <Text style={[styles.sendBtnText, { color: lastSentSuccess ? "#000" : "#fff" }]}>
-                {lastSentSuccess ? "TIP ENVOYÉ !" : "SEND TIP"}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
+            />
+          )}
 
+          {/* Pending notification */}
           {lastSentSuccess && (
             <GlassCard style={[styles.pendingBanner, { borderColor: "#F59E0B" }]} borderColor="#F59E0B">
               <MaterialCommunityIcons name="clock-check-outline" size={18} color="#F59E0B" />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.pendingBannerTitle, { color: colors.foreground }]}>Tip envoyé à {lastSentDjName}</Text>
-                <Text style={[styles.pendingBannerSub, { color: "#F59E0B" }]}>En attente d'acceptation par le DJ</Text>
+                <Text style={[styles.pendingTitle, { color: colors.foreground }]}>
+                  Tip envoyé à {lastSentDjName}
+                </Text>
+                <Text style={styles.pendingSub}>En attente d'acceptation par le DJ</Text>
               </View>
             </GlassCard>
           )}
 
+          {/* Low balance bar */}
           {wallet.balance < 5 && (
             <TouchableOpacity
               onPress={openStripeModal}
-              style={[styles.rechargeBar, { backgroundColor: colors.glassBackground, borderColor: colors.gold }]}
+              style={[styles.lowBalBar, { backgroundColor: "rgba(255,215,0,0.1)", borderColor: "#FFD700" }]}
             >
-              <Feather name="alert-circle" size={14} color={colors.gold} />
-              <Text style={[styles.rechargeText, { color: colors.gold }]}>Solde faible — Recharger</Text>
-              <Feather name="chevron-right" size={14} color={colors.gold} />
+              <Feather name="alert-circle" size={14} color="#FFD700" />
+              <Text style={styles.lowBalText}>Solde faible — Appuyez pour recharger</Text>
+              <Feather name="chevron-right" size={14} color="#FFD700" />
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -307,42 +376,71 @@ export default function FanScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { paddingHorizontal: 20 },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 },
-  appName: { fontSize: 20, fontFamily: "Inter_700Bold", letterSpacing: 2 },
-  tagline: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 3 },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-  themeToggle: {
-    width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", borderWidth: 1,
+  scroll: { paddingHorizontal: 18 },
+
+  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  themeBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  walletPill: { borderRadius: 22, overflow: "hidden", borderWidth: 1.5, borderColor: "rgba(255,215,0,0.4)" },
+  walletGradient: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 9 },
+  walletBalance: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFD700" },
+
+  djBanner: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingVertical: 16, paddingHorizontal: 18,
+    borderRadius: 16, marginBottom: 10,
+    shadowColor: "#8B22CC", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4, shadowRadius: 12, elevation: 6,
   },
-  walletPill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
-  walletBalance: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  sectionLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 2, marginBottom: 12 },
-  djScroll: { gap: 12, paddingRight: 20, marginBottom: 16 },
-  djCard: { width: 128, padding: 14, alignItems: "center", gap: 4, position: "relative" },
-  liveBadge: { position: "absolute", top: 8, right: 8, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10 },
+  djBannerName: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF", letterSpacing: 1, flex: 1 },
+  livePill: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#FF2D78", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#fff" },
-  liveText: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1 },
-  djAvatar: { fontSize: 32, marginBottom: 4 },
-  djName: { fontSize: 11, fontFamily: "Inter_700Bold", textAlign: "center" },
-  djGenre: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center" },
-  djTips: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 2 },
-  selectedDjBanner: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, marginBottom: 24 },
-  selectedDjText: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  liveIndicator: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  liveIndicatorText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1 },
-  bigAmount: { fontSize: 64, fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 20, letterSpacing: -2 },
-  tipsRow: { flexDirection: "row", justifyContent: "center", gap: 16, marginBottom: 20 },
-  bottomActionsRow: { flexDirection: "row", gap: 12, marginBottom: 16, alignItems: "center" },
-  enterAmountBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5 },
-  enterAmountText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  customInput: { flex: 1, borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center" },
-  messageInput: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, fontSize: 14, fontFamily: "Inter_400Regular", marginBottom: 16 },
-  sendBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 18, borderRadius: 20, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.6, shadowRadius: 14, elevation: 8, marginBottom: 14 },
-  sendBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", letterSpacing: 1.5 },
-  rechargeBar: { flexDirection: "row", alignItems: "center", gap: 8, padding: 14, borderRadius: 14, borderWidth: 1 },
-  rechargeText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
-  pendingBanner: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, marginBottom: 12 },
-  pendingBannerTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  pendingBannerSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  liveText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1 },
+  livePillSmall: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
+  liveTextSmall: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1 },
+
+  djPicker: { padding: 8, marginBottom: 14, gap: 4 },
+  djPickerRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 10, borderRadius: 12 },
+  djPickerAvatar: { fontSize: 24 },
+  djPickerName: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  djPickerGenre: { fontSize: 11, fontFamily: "Inter_400Regular" },
+
+  sectionLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 2.5, textAlign: "center", marginTop: 12, marginBottom: 14 },
+
+  coinsRow: { flexDirection: "row", justifyContent: "center", gap: 14, marginBottom: 20 },
+
+  yourTipLabel: { fontSize: 13, fontFamily: "Inter_700Bold", letterSpacing: 3, textAlign: "center", marginBottom: 12 },
+
+  amountBoxWrapper: { marginHorizontal: 8, marginBottom: 18, borderRadius: 20, overflow: "hidden" },
+  amountBox: { padding: 4 },
+  amountBorder: {
+    borderWidth: 2.5, borderRadius: 16, paddingVertical: 18, alignItems: "center",
+    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 16, elevation: 12,
+  },
+  amountValue: { fontSize: 58, fontFamily: "Inter_700Bold", letterSpacing: -1 },
+
+  logoRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16 },
+  dollarIconWrapper: { shadowColor: "#FFD700", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.7, shadowRadius: 8, elevation: 6 },
+  dollarCircle: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  dollarSign: { fontSize: 24, fontFamily: "Inter_700Bold", color: "#fff" },
+  logoMoney: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#FFD700", letterSpacing: 1, lineHeight: 22 },
+  logoPullup: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#FF8C00", letterSpacing: 1, lineHeight: 22 },
+
+  messageInput: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, fontSize: 14, fontFamily: "Inter_400Regular", marginBottom: 14 },
+
+  actionRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  actionBtnWrap: { flex: 1 },
+  sendBtnWrapper: { flex: 1.3 },
+  actionBtn: { alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 14, borderRadius: 16 },
+  sendBtnInner: { shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.7, shadowRadius: 12, elevation: 10 },
+  actionBtnLabel: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.8, textAlign: "center" },
+  sendBtnText: { fontSize: 12, letterSpacing: 1 },
+
+  customInput: { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 14 },
+
+  pendingBanner: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, marginBottom: 10 },
+  pendingTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  pendingSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#F59E0B", marginTop: 2 },
+
+  lowBalBar: { flexDirection: "row", alignItems: "center", gap: 8, padding: 13, borderRadius: 13, borderWidth: 1 },
+  lowBalText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: "#FFD700" },
 });
