@@ -1,8 +1,8 @@
 import { Feather, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -227,52 +227,81 @@ export default function DJScreen() {
           </View>
         </GlassCard>
 
-        {/* Social Links */}
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>LIENS SOCIAUX</Text>
-        <GlassCard style={styles.socialCard}>
+        {/* DJ Profile Mini Card */}
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>PROFIL DJ — VÉRIFICATION</Text>
+        <View style={styles.profileCard}>
+          {/* Card header: identity */}
+          <View style={styles.profileCardHeader}>
+            <View style={styles.profileAvatarCircle}>
+              <Text style={styles.profileAvatarEmoji}>{myDj?.avatar ?? "🎧"}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.profileCardName}>{myDj?.name ?? "—"}</Text>
+              <Text style={styles.profileCardGenre}>{myDj?.genre ?? ""}</Text>
+            </View>
+            {myDj?.isLive && (
+              <View style={styles.profileLiveBadge}>
+                <View style={styles.profileLiveDot} />
+                <Text style={styles.profileLiveText}>LIVE</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.profileDivider} />
+
+          {/* Social brand rows */}
           {editingSocial ? (
-            <>
-              <SocialInput
-                icon="instagram"
+            <View style={{ gap: 12 }}>
+              <SocialEditRow
+                platform="instagram"
                 placeholder="@votre_instagram"
                 value={socialDraft.instagram}
                 onChangeText={(t) => setSocialDraft((p) => ({ ...p, instagram: t }))}
-                colors={colors}
               />
-              <SocialInput
-                icon="tiktok"
+              <SocialEditRow
+                platform="tiktok"
                 placeholder="@votre_tiktok"
                 value={socialDraft.tiktok}
                 onChangeText={(t) => setSocialDraft((p) => ({ ...p, tiktok: t }))}
-                colors={colors}
               />
-              <SocialInput
-                icon="facebook"
+              <SocialEditRow
+                platform="facebook"
                 placeholder="Votre page Facebook"
                 value={socialDraft.facebook}
                 onChangeText={(t) => setSocialDraft((p) => ({ ...p, facebook: t }))}
-                colors={colors}
               />
-              <TouchableOpacity
-                onPress={handleSaveSocial}
-                style={[styles.saveSocialBtn, { backgroundColor: colors.violet }]}
-              >
-                <Feather name="check" size={16} color="#fff" />
-                <Text style={styles.saveSocialText}>Enregistrer</Text>
-              </TouchableOpacity>
-            </>
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+                <TouchableOpacity
+                  onPress={() => setEditingSocial(false)}
+                  style={[styles.profileActionBtn, { backgroundColor: "#f3f4f6", flex: 1 }]}
+                >
+                  <Feather name="x" size={15} color="#666" />
+                  <Text style={[styles.profileActionBtnText, { color: "#666" }]}>Annuler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSaveSocial}
+                  style={[styles.profileActionBtn, { backgroundColor: "#7C3AED", flex: 1 }]}
+                >
+                  <Feather name="check" size={15} color="#fff" />
+                  <Text style={[styles.profileActionBtnText, { color: "#fff" }]}>Enregistrer</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           ) : (
-            <>
-              <SocialRow icon="instagram" value={myDj?.socialLinks.instagram} colors={colors} color="#E1306C" />
-              <SocialRow icon="tiktok" value={myDj?.socialLinks.tiktok} colors={colors} color="#000000" />
-              <SocialRow icon="facebook" value={myDj?.socialLinks.facebook} colors={colors} color="#1877F2" />
+            <View style={{ gap: 10 }}>
+              <SocialBrandRow platform="instagram" handle={myDj?.socialLinks?.instagram} />
+              <SocialBrandRow platform="tiktok" handle={myDj?.socialLinks?.tiktok} />
+              <SocialBrandRow platform="facebook" handle={myDj?.socialLinks?.facebook} />
+
+              <View style={styles.profileDivider} />
+
               <TouchableOpacity onPress={handleEditSocial} style={styles.editSocialBtn}>
-                <Feather name="edit-2" size={14} color={colors.violet} />
-                <Text style={[styles.editSocialText, { color: colors.violet }]}>Modifier les liens</Text>
+                <Feather name="edit-2" size={14} color="#7C3AED" />
+                <Text style={[styles.editSocialText, { color: "#7C3AED" }]}>Modifier les liens</Text>
               </TouchableOpacity>
-            </>
+            </View>
           )}
-        </GlassCard>
+        </View>
 
         {/* Pending tips — ACCEPTER LE MONEY PULL-UP */}
         {pendingTips.length > 0 && (
@@ -321,53 +350,116 @@ export default function DJScreen() {
   );
 }
 
-function SocialInput({
-  icon, placeholder, value, onChangeText, colors,
+const SOCIAL_CONFIG = {
+  instagram: {
+    label: "Instagram",
+    icon: "instagram" as const,
+    gradient: ["#833ab4", "#fd1d1d", "#fcb045"] as [string, string, string],
+    fg: "#fff",
+  },
+  tiktok: {
+    label: "TikTok",
+    icon: "tiktok" as const,
+    gradient: ["#010101", "#2d2d2d"] as unknown as [string, string, string],
+    fg: "#fff",
+  },
+  facebook: {
+    label: "Facebook",
+    icon: "facebook" as const,
+    gradient: ["#1877F2", "#0d5fd6"] as [string, string, string],
+    fg: "#fff",
+  },
+};
+
+function SocialBrandRow({ platform, handle }: { platform: keyof typeof SOCIAL_CONFIG; handle?: string }) {
+  const cfg = SOCIAL_CONFIG[platform];
+  const hasHandle = !!handle;
+
+  return (
+    <View style={brandStyles.row}>
+      <LinearGradient colors={cfg.gradient} style={brandStyles.iconBox} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}>
+        <FontAwesome5 name={cfg.icon} size={18} color={cfg.fg} solid />
+      </LinearGradient>
+      <View style={{ flex: 1 }}>
+        <Text style={brandStyles.platformName}>{cfg.label}</Text>
+        <Text style={[brandStyles.handle, !hasHandle && brandStyles.handleEmpty]}>
+          {hasHandle ? handle : "Non renseigné"}
+        </Text>
+      </View>
+      {hasHandle ? (
+        <View style={brandStyles.verifiedBadge}>
+          <Feather name="check" size={11} color="#fff" />
+          <Text style={brandStyles.verifiedText}>Lié</Text>
+        </View>
+      ) : (
+        <View style={[brandStyles.verifiedBadge, { backgroundColor: "#e5e7eb" }]}>
+          <Feather name="link" size={11} color="#9ca3af" />
+          <Text style={[brandStyles.verifiedText, { color: "#9ca3af" }]}>Vide</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function SocialEditRow({
+  platform, placeholder, value, onChangeText,
 }: {
-  icon: "instagram" | "tiktok" | "facebook";
+  platform: keyof typeof SOCIAL_CONFIG;
   placeholder: string;
   value: string;
   onChangeText: (t: string) => void;
-  colors: ReturnType<typeof useColors>;
 }) {
-  const iconColors: Record<string, string> = {
-    instagram: "#E1306C",
-    tiktok: colors.foreground,
-    facebook: "#1877F2",
-  };
+  const cfg = SOCIAL_CONFIG[platform];
+
   return (
-    <View style={styles.socialInputRow}>
-      <FontAwesome5 name={icon} size={16} color={iconColors[icon]} style={{ width: 22 }} />
+    <View style={brandStyles.editRow}>
+      <LinearGradient colors={cfg.gradient} style={brandStyles.editIconBox} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}>
+        <FontAwesome5 name={cfg.icon} size={14} color={cfg.fg} solid />
+      </LinearGradient>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.mutedForeground}
-        style={[styles.socialTextInput, { color: colors.foreground, borderColor: colors.glassBorder, backgroundColor: colors.glassBackground }]}
+        placeholderTextColor="#9ca3af"
         autoCapitalize="none"
+        style={brandStyles.editInput}
       />
     </View>
   );
 }
 
-function SocialRow({
-  icon, value, colors, color,
-}: {
-  icon: "instagram" | "tiktok" | "facebook";
-  value?: string;
-  colors: ReturnType<typeof useColors>;
-  color: string;
-}) {
-  const labels: Record<string, string> = { instagram: "Instagram", tiktok: "TikTok", facebook: "Facebook" };
-  return (
-    <View style={styles.socialRow}>
-      <FontAwesome5 name={icon} size={16} color={value ? color : colors.mutedForeground} style={{ width: 22 }} />
-      <Text style={[styles.socialRowText, { color: value ? colors.foreground : colors.mutedForeground }]}>
-        {value || `${labels[icon]} non renseigné`}
-      </Text>
-    </View>
-  );
-}
+const brandStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: "#f9fafb", borderRadius: 14, padding: 12,
+  },
+  iconBox: {
+    width: 44, height: 44, borderRadius: 12,
+    alignItems: "center", justifyContent: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18, shadowRadius: 4, elevation: 3,
+  },
+  platformName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#6b7280", marginBottom: 2 },
+  handle: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#111827" },
+  handleEmpty: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#d1d5db" },
+  verifiedBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "#22C55E", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  verifiedText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
+  editRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  editIconBox: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: "center", justifyContent: "center",
+  },
+  editInput: {
+    flex: 1, backgroundColor: "#f3f4f6", borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
+    fontSize: 14, fontFamily: "Inter_400Regular", color: "#111827",
+    borderWidth: 1, borderColor: "#e5e7eb",
+  },
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -397,15 +489,34 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   statDivider: { width: 1 },
   sectionLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 2, marginBottom: 12 },
-  socialCard: { padding: 16, gap: 12, marginBottom: 24 },
-  socialRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 4 },
-  socialRowText: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  socialInputRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  socialTextInput: { flex: 1, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, fontFamily: "Inter_400Regular" },
-  editSocialBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingTop: 4 },
+
+  profileCard: {
+    backgroundColor: "#ffffff", borderRadius: 20, padding: 18, marginBottom: 24,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12, shadowRadius: 12, elevation: 6,
+  },
+  profileCardHeader: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 },
+  profileAvatarCircle: {
+    width: 54, height: 54, borderRadius: 27, backgroundColor: "#f3f4f6",
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 2, borderColor: "#e5e7eb",
+  },
+  profileAvatarEmoji: { fontSize: 28 },
+  profileCardName: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#111827" },
+  profileCardGenre: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#6b7280", marginTop: 2 },
+  profileLiveBadge: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "#FF2D78", borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  profileLiveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#fff" },
+  profileLiveText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1 },
+  profileDivider: { height: 1, backgroundColor: "#f3f4f6", marginVertical: 12 },
+  profileActionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 11, borderRadius: 12 },
+  profileActionBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+
+  editSocialBtn: { flexDirection: "row", alignItems: "center", gap: 8 },
   editSocialText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  saveSocialBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12, marginTop: 4 },
-  saveSocialText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
   feedHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
   countBadge: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   countBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
