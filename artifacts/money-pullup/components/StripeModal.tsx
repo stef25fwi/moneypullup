@@ -1,4 +1,5 @@
 import { Feather, MaterialIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
@@ -12,6 +13,7 @@ import {
 import * as Haptics from "expo-haptics";
 
 import { useColors } from "@/hooks/useColors";
+import { useTheme } from "@/contexts/ThemeContext";
 import { useTips } from "@/contexts/TipsContext";
 
 const FUND_AMOUNTS = [10, 20, 50, 100];
@@ -23,6 +25,7 @@ interface StripeModalProps {
 
 export function StripeModal({ visible, onClose }: StripeModalProps) {
   const colors = useColors();
+  const { isDark } = useTheme();
   const { addFunds } = useTips();
   const [selectedAmount, setSelectedAmount] = useState<number>(20);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -54,12 +57,15 @@ export function StripeModal({ visible, onClose }: StripeModalProps) {
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View
-          style={[
-            styles.sheet,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
+        <View style={[styles.sheet, { borderColor: colors.glassBorder }]}>
+          {Platform.OS !== "web" && (
+            <BlurView
+              intensity={isDark ? 60 : 80}
+              tint={isDark ? "dark" : "light"}
+              style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 28, borderTopRightRadius: 28 }]}
+            />
+          )}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(13,0,24,0.75)" : "rgba(243,238,255,0.85)", borderTopLeftRadius: 28, borderTopRightRadius: 28 }]} />
           <View style={styles.handle} />
 
           <View style={styles.header}>
@@ -181,6 +187,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 40,
     paddingTop: 16,
+    overflow: "hidden",
   },
   handle: {
     width: 40,
