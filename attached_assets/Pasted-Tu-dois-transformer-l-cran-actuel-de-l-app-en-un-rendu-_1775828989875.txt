@@ -1,0 +1,109 @@
+Tu dois transformer l’écran actuel de l’app en un rendu ultra fidèle visuellement à la maquette de référence, avec un niveau de finition pixel perfect premium mobile UI.
+
+Objectif
+
+Refaire uniquement le style visuel de l’écran tip DJ pour qu’il ressemble au maximum à la référence :
+	•	ambiance casino / nightlife / neon premium
+	•	fond violet cosmique / galaxie / glossy
+	•	gros boutons montants ronds, colorés, brillants, avec effet 3D
+	•	gros montant central rose néon lumineux
+	•	logo Money Pull-up très visible, stylé, dynamique
+	•	boutons CTA en bas très lisibles, rectangulaires, épais, glossy, arcade style
+	•	rendu général plus riche, plus lumineux, plus premium, plus spectaculaire
+
+Direction artistique à respecter
+
+Tu dois viser ce niveau visuel :
+	•	fond violet profond avec dégradés, halos, particules, lumière diffuse
+	•	lignes de séparation fines blanches / roses translucides
+	•	gros titre blanc très bold centré, avec présence forte
+	•	pastilles de montants type jetons premium :
+	•	orange pour 10€
+	•	vert pour 15€
+	•	bleu pour 20€
+	•	chaque pastille doit avoir :
+	•	contour lumineux
+	•	double anneau
+	•	ombre portée
+	•	léger dégradé interne
+	•	effet glossy / relief / arcade
+	•	bloc YOUR TIP avec :
+	•	cadre rose néon
+	•	glow externe
+	•	fond violet foncé brillant
+	•	très gros texte blanc/rose type jackpot
+	•	bloc logo Money Pull-up :
+	•	plus grand
+	•	plus central
+	•	plus premium
+	•	effet dynamique / monétaire / show business
+	•	boutons du bas :
+	•	bien alignés
+	•	gros rayon
+	•	couleurs très marquées
+	•	violet / rose / jaune-orangé
+	•	texte blanc très bold
+	•	effet pressable premium
+	•	bas de page avec lueur violette horizontale
+
+Contraintes de design
+	•	garder une UI propre, premium, moderne
+	•	éviter le flat design simple
+	•	ajouter du relief, du gloss, du glow, de la profondeur
+	•	rendu inspiré mobile game premium + paiement festif + app DJ
+	•	espacement très soigné
+	•	hiérarchie visuelle claire
+	•	aucun élément ne doit paraître fade
+	•	éviter les couleurs ternes
+	•	le résultat doit paraître plus proche d’un visuel marketing premium que d’un simple écran d’app basique
+
+Ce qu’il faut modifier concrètement
+	1.	Refaire le background principal avec un dégradé violet intense + halos lumineux.
+	2.	Refaire le header pour qu’il soit plus fort visuellement.
+	3.	Transformer les boutons de montant en grosses bulles 3D premium.
+	4.	Agrandir et sublimer le montant central.
+	5.	Donner au logo Money Pull-up un rendu beaucoup plus impactant.
+	6.	Refaire les 3 boutons d’action avec un style arcade / glossy / premium.
+	7.	Ajouter ombres, lueurs, contours et micro-détails visuels.
+	8.	Garder la structure fonctionnelle actuelle, mais refaire le skin visuel complet.
+
+Règles techniques
+	•	Ne casse aucune logique métier
+	•	Ne modifie pas le routing
+	•	Ne touche pas aux handlers / fonctions existantes
+	•	Modifie surtout :
+	•	styles
+	•	couleurs
+	•	gradients
+	•	shadows
+	•	borders
+	•	radius
+	•	spacing
+	•	typography
+	•	wrappers UI
+	•	Si nécessaire, crée des composants visuels réutilisables :
+	•	AmountChip3D
+	•	NeonCard
+	•	PremiumActionButton
+	•	GlowPanel
+	•	privilégier un code propre, maintenable et cohérent
+
+Niveau d’exigence
+
+Je veux un résultat :
+	•	pixel perfect
+	•	premium
+	•	wow effect
+	•	proche de la référence
+	•	plus détaillé, plus lumineux, plus impactant que l’écran actuel
+
+Livrable attendu
+	•	applique directement les changements dans le code
+	•	puis résume précisément :
+	1.	les fichiers modifiés
+	2.	les composants créés
+	3.	les choix visuels appliqués
+	4.	ce qu’il reste à peaufiner pour une fidélité encore plus parfaite
+
+Important :
+Tu dois te comporter comme un senior UI designer + front-end engineer obsessionnel du détail, et viser une fidélité visuelle maximale à la maquette de référence.
