@@ -1,0 +1,1284 @@
+ PRD — Money Pull-up — Page accueil Fan / Tip Live — Pixel Perfect 4K
+
+**Version :** 1.0  
+**Écran :** Accueil Fan — envoi de tip à un DJ en live  
+**Référence visuelle :** mockup fourni par le client  
+**Exigence principale :** reproduction **strictement identique** du rendu visuel : couleurs, proportions, espacements, typographies, contours, opacités, glow, icônes, arrondis, hiérarchie et ambiance lumineuse.
+
+---
+
+## 1. Objectif produit
+
+Créer l’écran d’accueil fan de l’application **Money Pull-up**, permettant à un utilisateur de :
+
+1. Voir le DJ actuellement en live.
+2. Consulter ses fans et spectateurs en direct.
+3. Choisir rapidement un montant de tip.
+4. Envoyer un tip avec un message optionnel.
+5. Recharger son solde.
+6. Naviguer entre les onglets **Fan**, **DJ**, **Profil**.
+
+Le rendu doit reprendre l’ambiance **club / live set / néon rose-violet-bleu**, avec une interface sombre premium, des contours fins, des effets lumineux et un contraste élevé.
+
+---
+
+## 2. Cadrage pixel-perfect
+
+### 2.1 Résolution de référence
+
+Le mockup fourni est au ratio **9:16**.
+
+| Format | Largeur | Hauteur | Facteur |
+|---|---:|---:|---:|
+| Référence source | 864 px | 1536 px | 1x |
+| Export demandé 4K smartphone | 2160 px | 3840 px | 2.5x |
+
+Toutes les mesures ci-dessous sont données sur la base **864 × 1536 px**.  
+Pour l’export 4K, multiplier chaque valeur par **2.5**.
+
+### 2.2 Règle d’intégration Flutter
+
+Le rendu Flutter doit être construit avec une logique responsive, mais la référence visuelle à respecter est :
+
+```txt
+DesignSize(width: 864, height: 1536)
+Export4K(width: 2160, height: 3840)
+ScaleFactor4K = 2.5
+```
+
+Dans Flutter, utiliser une fonction de scaling unique :
+
+```dart
+double sx(BuildContext context, double px) => px * MediaQuery.of(context).size.width / 864;
+double sy(BuildContext context, double px) => px * MediaQuery.of(context).size.height / 1536;
+double sr(BuildContext context, double px) {
+  final s = MediaQuery.of(context).size.width / 864;
+  return px * s;
+}
+```
+
+Ne pas modifier les proportions selon l’appareil.  
+Si le ratio écran est différent, conserver le design centré avec recadrage léger du fond, jamais d’étirement horizontal.
+
+---
+
+## 3. Direction artistique
+
+### 3.1 Style global
+
+- Univers : DJ, club, scène live, musique électronique.
+- Ambiance : nuit, fumée, spotlights magenta, bleu électrique, violet.
+- Interface : glassmorphism sombre, néon premium.
+- Formes : grands arrondis, contours fins, boutons très espacés.
+- Effets : glow rose sur montant sélectionné et CTA principal.
+- Hiérarchie : héro DJ dominant en haut, choix du tip au centre, action forte en bas.
+
+### 3.2 Mots-clés visuels obligatoires
+
+```txt
+dark premium, neon pink, purple blue lights, live DJ, glass card,
+rounded borders, soft blur, electric glow, wallet pill, tip buttons,
+bottom navigation translucent, nightclub atmosphere
+```
+
+---
+
+## 4. Palette couleur exacte à utiliser
+
+Les couleurs doivent être appliquées avec les opacités indiquées.  
+Ne pas remplacer par des variantes Material Design.
+
+| Token | HEX | Usage |
+|---|---|---|
+| `bgBlack` | `#03020A` | fond principal profond |
+| `bgNight` | `#080617` | dégradé noir-violet |
+| `bgPurpleDeep` | `#130219` | zones sombres violettes |
+| `bgCard` | `#0C0A15` | cartes translucides |
+| `bgCardPurple` | `#1D0531` | surfaces glass violettes |
+| `neonPink` | `#FF1B8D` | accent principal |
+| `hotPink` | `#EF167F` | CTA, badge live |
+| `glowPink` | `#F725A0` | halo sélection 10 € |
+| `softPink` | `#FF7AC8` | texte montant sélectionné |
+| `electricBlue` | `#008BEA` | contour recharge |
+| `cyanBlue` | `#00B7E8` | icône recharge |
+| `neonPurple` | `#8D2CFF` | contour 20 € |
+| `darkPurpleBorder` | `#3B1452` | bordures glass |
+| `white` | `#FFFFFF` | texte principal |
+| `textSoft` | `#C9C3D8` | texte secondaire |
+| `textMuted` | `#8D879D` | labels faibles |
+| `dividerDark` | `#24152F` | séparateurs subtils |
+
+### 4.1 Dégradés
+
+#### Fond général
+
+```dart
+LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [
+    Color(0xFF03020A),
+    Color(0xFF080617),
+    Color(0xFF130219),
+    Color(0xFF03020A),
+  ],
+  stops: [0.0, 0.34, 0.68, 1.0],
+)
+```
+
+#### CTA “ENVOYER LE TIP”
+
+```dart
+LinearGradient(
+  begin: Alignment.centerLeft,
+  end: Alignment.centerRight,
+  colors: [
+    Color(0xFFED1581),
+    Color(0xFFFF1B8D),
+    Color(0xFFE90F74),
+  ],
+)
+```
+
+#### Montant sélectionné 10 €
+
+```dart
+RadialGradient(
+  center: Alignment.center,
+  radius: 0.74,
+  colors: [
+    Color(0x44FF1B8D),
+    Color(0x1103020A),
+    Color(0x0003020A),
+  ],
+)
+```
+
+---
+
+## 5. Assets obligatoires
+
+### 5.1 Image DJ héro
+
+Nom conseillé :
+
+```txt
+assets/images/moneypullup/dj_master_beat_hero.webp
+```
+
+Contraintes :
+
+- Image sombre d’un DJ en live.
+- Dominante magenta / bleu.
+- DJ positionné à droite, tête vers le haut droit.
+- Table de mixage en bas.
+- Lumières floues en arrière-plan.
+- L’image doit être utilisée en **BoxFit.cover** dans la carte héro.
+- Ne pas remplacer par une illustration vectorielle.
+- Ne pas éclaircir le visage.
+- Ne pas ajouter de texte dans l’image elle-même.
+
+### 5.2 Fond lumineux 4K
+
+Nom conseillé :
+
+```txt
+assets/images/moneypullup/home_neon_bg_4k.webp
+```
+
+Contraintes :
+
+- Dimensions source : **2160 × 3840 px**.
+- Fond noir-violet.
+- Faisceaux néon bleu et magenta en diagonale.
+- Texture fumée / grain subtil.
+- Pas de motifs nets qui détournent l’attention.
+- Compression WebP qualité 90 minimum.
+
+### 5.3 Icônes
+
+Utiliser des SVG dédiés, pas des icônes Material approximatives.
+
+| Icône | Style |
+|---|---|
+| portefeuille | contour fin, angle arrondi, rose en haut |
+| cœur | contour rose, non rempli |
+| utilisateur live | contour rose, non rempli |
+| égaliseur audio | petites barres rose, fines |
+| dollar | cercle rose + `$` central |
+| éclair | plein blanc, incliné |
+| montant libre | grille/curseur rose |
+| recharge | portefeuille cyan contour |
+| onglet Fan | groupe utilisateurs rose |
+| onglet DJ | disque / note dans cercle gris-violet |
+| onglet Profil | silhouette contour gris |
+
+Épaisseur des traits source : **2 px**.  
+Épaisseur export 4K : **5 px**.
+
+---
+
+## 6. Structure de l’écran
+
+### 6.1 Arborescence Flutter recommandée
+
+```txt
+MoneyPullupHomePage
+└── Scaffold(backgroundColor: Colors.transparent)
+    └── Stack
+        ├── HomeNeonBackground
+        ├── SafeArea
+        │   └── Column
+        │       ├── StatusBarSpacer / custom status visual only for mockup
+        │       ├── TopWalletPill
+        │       ├── HeroDjCard
+        │       ├── SectionTitle("CHOISISSEZ VOTRE TIP")
+        │       ├── TipAmountSelector
+        │       ├── SectionTitle("VOTRE TIP")
+        │       ├── SelectedTipDisplay
+        │       ├── MoneyPullupInfo
+        │       ├── MessageInput
+        │       ├── ActionButtonsRow
+        │       └── BottomNavBar
+```
+
+### 6.2 Règle importante
+
+Dans l’application réelle, ne pas dessiner la coque iPhone.  
+Le PRD décrit la **page applicative** visible dans le mockup.  
+Pour les exports marketing 4K, la page peut être intégrée dans une coque smartphone, mais ce n’est pas un composant applicatif.
+
+---
+
+## 7. Layout détaillé — coordonnées source 864 × 1536
+
+> Multiplier par 2.5 pour la sortie 2160 × 3840.
+
+### 7.1 Zone de contenu principale
+
+| Élément | X | Y | W | H | Notes |
+|---|---:|---:|---:|---:|---|
+| page background | 0 | 0 | 864 | 1536 | noir-violet, néons |
+| contenu app centré | 136 | 156 | 592 | 1264 | colonne principale |
+| wallet pill | 560 | 157 | 160 | 57 | aligné haut droit |
+| carte héro DJ | 136 | 168 | 592 | 443 | radius 22 |
+| bloc stats héro | 160 | 510 | 256 | 82 | glass sombre |
+| titre section tips | 327 | 640 | 211 | 14 | tracking fort |
+| boutons tips | 157 | 678 | 550 | 121 | 4 boutons |
+| titre “VOTRE TIP” | 386 | 839 | 92 | 14 | tracking fort |
+| panneau montant | 148 | 862 | 564 | 112 | glass rect |
+| info Money Pull-up | 304 | 994 | 256 | 47 | icône + texte |
+| champ message | 148 | 1059 | 564 | 77 | radius 16 |
+| boutons action | 142 | 1168 | 576 | 104 | 3 colonnes |
+| bottom nav | 137 | 1315 | 590 | 104 | radius 26 |
+
+---
+
+## 8. Composants détaillés
+
+## 8.1 Top wallet pill
+
+### Position
+
+```txt
+x: 560
+y: 157
+w: 160
+h: 57
+radius: 28
+```
+
+### Apparence
+
+- Fond : `#0C0A15` à 58 %.
+- Bordure : `#4A185D` à 75 %, épaisseur 1 px.
+- Blur arrière-plan : sigma 18.
+- Icône portefeuille à gauche :
+  - X relatif : 24.
+  - Taille : 25 × 25.
+  - Couleur : `#FF1B8D`.
+- Texte :
+  - `20,00 €`
+  - Couleur : `#FFFFFF`
+  - Taille source : 23 px.
+  - Poids : 500.
+  - Alignement vertical centré.
+
+### Flutter attendu
+
+```dart
+Container(
+  height: sy(context, 57),
+  width: sx(context, 160),
+  decoration: BoxDecoration(
+    color: const Color(0x990C0A15),
+    borderRadius: BorderRadius.circular(sr(context, 28)),
+    border: Border.all(color: const Color(0xBF4A185D), width: sr(context, 1)),
+  ),
+)
+```
+
+---
+
+## 8.2 Carte héro DJ
+
+### Position
+
+```txt
+x: 136
+y: 168
+w: 592
+h: 443
+radius: 22
+```
+
+### Apparence
+
+- Radius : 22 px.
+- Image : `dj_master_beat_hero.webp`.
+- Overlay bas : dégradé noir vers transparent.
+- Overlay gauche : noir violet semi-transparent pour lisibilité.
+- Bordure : `#34234A` à 55 %, épaisseur 1 px.
+- Ombre : noire douce, blur 32 px, opacity 35 %.
+
+### Overlay obligatoire
+
+```dart
+LinearGradient(
+  begin: Alignment.centerLeft,
+  end: Alignment.centerRight,
+  colors: [
+    Color(0xCC05030D),
+    Color(0x6605030D),
+    Color(0x1105030D),
+  ],
+)
+```
+
+Ajouter aussi un dégradé vertical :
+
+```dart
+LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [
+    Color(0x0003020A),
+    Color(0x1103020A),
+    Color(0xCC03020A),
+  ],
+  stops: [0.0, 0.58, 1.0],
+)
+```
+
+---
+
+## 8.3 Badge LIVE
+
+### Position dans la carte héro
+
+```txt
+x absolu: 163
+y absolu: 194
+w: 72
+h: 29
+radius: 7
+```
+
+### Apparence
+
+- Fond : `#E91679`.
+- Radius : 7 px.
+- Point blanc à gauche :
+  - diamètre : 7 px.
+  - couleur : `#FFFFFF`.
+- Texte :
+  - `LIVE`
+  - taille : 13 px.
+  - couleur : `#FFFFFF`.
+  - poids : 700.
+  - tracking : 0.7 px.
+
+---
+
+## 8.4 Titre DJ
+
+### Position
+
+```txt
+x: 160
+y: 318
+```
+
+### Texte
+
+```txt
+DJ
+MASTER BEAT
+House • Techno • Live Set
+```
+
+### Typographie
+
+| Texte | Taille source | Poids | Couleur | Tracking | Police |
+|---|---:|---:|---|---:|---|
+| DJ | 34 px | 800 | `#FFFFFF` | 0.5 | Bebas Neue / Oswald |
+| MASTER BEAT | 41 px | 900 | `#FFFFFF` | 1.5 | Bebas Neue / Oswald |
+| House • Techno • Live Set | 20 px | 500 | `#FFFFFF` | 1.0 | Inter / SF Pro |
+
+Le titre `MASTER BEAT` doit avoir une largeur visuelle proche de **315 px** dans la source.
+
+---
+
+## 8.5 Ligne genre musical
+
+### Icône audio
+
+- Position : x 160, y 445.
+- Couleur : `#FF1B8D`.
+- Largeur : 25 px.
+- Style : 5 petites barres verticales avec hauteurs variables.
+- Traits arrondis.
+
+### Texte
+
+```txt
+House • Techno • Live Set
+```
+
+- X : 198.
+- Y : 449.
+- Taille : 20 px.
+- Couleur : `#FFFFFF` à 92 %.
+
+---
+
+## 8.6 Bloc stats héro
+
+### Position
+
+```txt
+x: 160
+y: 510
+w: 256
+h: 82
+radius: 13
+```
+
+### Apparence
+
+- Fond : `#080617` à 58 %.
+- Blur : 16.
+- Bordure : `#351649` à 60 %, 1 px.
+- Séparateur vertical :
+  - x relatif : 128.
+  - hauteur : 54 px.
+  - couleur : `#2A1938`.
+
+### Colonne gauche
+
+```txt
+Icône cœur rose
+12.5K
+Fans
+```
+
+- Icône : x 180, y 535, taille 22.
+- Valeur : taille 25 px, poids 500.
+- Label : taille 16 px, couleur `#C9C3D8`.
+
+### Colonne droite
+
+```txt
+Icône utilisateur rose
+340
+En live
+```
+
+- Icône : x 314, y 535, taille 22.
+- Valeur : taille 25 px, poids 500.
+- Label : taille 16 px, couleur `#C9C3D8`.
+
+---
+
+## 8.7 Label “CHOISISSEZ VOTRE TIP”
+
+### Position
+
+```txt
+x: 327
+y: 640
+w: 211
+h: 14
+```
+
+### Apparence
+
+```txt
+CHOISISSEZ VOTRE TIP
+```
+
+- Taille : 12 px.
+- Poids : 700.
+- Couleur : `#BEB8CC`.
+- Opacité : 82 %.
+- Tracking : 5 px.
+- Alignement : centré.
+
+---
+
+## 8.8 Sélecteur de tips
+
+### Structure
+
+4 boutons circulaires alignés horizontalement.
+
+| Montant | Centre X | Centre Y | Diamètre | Bordure | État |
+|---|---:|---:|---:|---|---|
+| 5 € | 211 | 738 | 117 | rose sombre | normal |
+| 10 € | 357 | 738 | 126 | rose néon | sélectionné |
+| 15 € | 501 | 738 | 117 | bleu | normal |
+| 20 € | 648 | 738 | 117 | violet | normal |
+
+### Espacement
+
+- Distance centre à centre : environ 145 px.
+- Bouton sélectionné légèrement plus grand visuellement à cause du glow.
+
+### Bouton normal
+
+- Fond : transparent / `#05030D` à 28 %.
+- Bordure : 1.2 px.
+- Texte : blanc, 36 px, poids 400.
+
+### Couleurs de bordure
+
+| Montant | Couleur |
+|---|---|
+| 5 € | `#9D1A82` à 70 % |
+| 15 € | `#0078C9` à 65 % |
+| 20 € | `#8D2CFF` à 65 % |
+
+### Bouton sélectionné 10 €
+
+- Diamètre : 126 px.
+- Bordure : `#FF1B8D`, 2 px.
+- Glow externe :
+  - couleur `#FF1B8D`
+  - blur 26 px
+  - spread 3 px
+  - opacité 85 %
+- Glow interne radial rose.
+- Texte :
+  - `10€`
+  - taille : 37 px.
+  - poids : 600.
+  - couleur : `#FFFFFF`.
+
+---
+
+## 8.9 Label “VOTRE TIP”
+
+### Position
+
+```txt
+x: 386
+y: 839
+w: 92
+h: 14
+```
+
+### Apparence
+
+- Taille : 12 px.
+- Poids : 700.
+- Tracking : 5 px.
+- Couleur : `#BEB8CC` à 82 %.
+
+---
+
+## 8.10 Panneau montant sélectionné
+
+### Position
+
+```txt
+x: 148
+y: 862
+w: 564
+h: 112
+radius: 14
+```
+
+### Apparence
+
+- Fond : `#100719` à 50 %.
+- Bordure : `#342044` à 70 %, épaisseur 1 px.
+- Blur arrière-plan : sigma 14.
+- Léger dégradé violet transparent.
+- Pas d’ombre forte.
+
+### Texte
+
+```txt
+10 €
+```
+
+- Position centré.
+- Taille : 73 px source.
+- Poids : 800.
+- Couleur : dégradé vertical rose :
+  - haut `#FF97D6`
+  - milieu `#FF3BA6`
+  - bas `#E91679`
+- Espacement entre `10` et `€` visible.
+- Baseline approximative : y 946.
+
+---
+
+## 8.11 Bloc info Money Pull-up
+
+### Position
+
+```txt
+x: 304
+y: 994
+w: 256
+h: 47
+```
+
+### Apparence
+
+- Icône cercle dollar :
+  - x : 304.
+  - y : 997.
+  - taille : 40 × 40.
+  - bordure rose 2 px.
+  - `$` rose centré.
+- Titre :
+  - `Money Pull-up`
+  - x : 361.
+  - y : 999.
+  - taille : 16 px.
+  - poids : 500.
+  - couleur : `#FFD3EC`.
+- Sous-titre :
+  - `Le soutien qui fait monter le son.`
+  - x : 361.
+  - y : 1025.
+  - taille : 13.5 px.
+  - couleur : `#FFFFFF` à 88 %.
+
+---
+
+## 8.12 Champ message
+
+### Position
+
+```txt
+x: 148
+y: 1059
+w: 564
+h: 77
+radius: 15
+```
+
+### Apparence
+
+- Fond : `#0A0613` à 45 %.
+- Bordure : `#31203E` à 80 %, 1 px.
+- Texte placeholder :
+  - `Un message pour le DJ ... (optionnel)`
+  - x : 170.
+  - y : 1093.
+  - taille : 16 px.
+  - couleur : `#A9A3B8`.
+- Compteur :
+  - `0/120`
+  - x : 648.
+  - y : 1093.
+  - taille : 14 px.
+  - couleur : `#C9C3D8`.
+
+### Comportement
+
+- Longueur max : 120 caractères.
+- Une seule ligne visible.
+- Si texte dépasse, scroll horizontal interne ou ellipsis selon composant Flutter choisi.
+- Le compteur s’actualise en temps réel.
+- Le champ ne doit pas déplacer les boutons si le clavier s’ouvre : utiliser `resizeToAvoidBottomInset: false` ou comportement contrôlé avec scroll.
+
+---
+
+## 8.13 Boutons d’action
+
+### Ligne
+
+```txt
+x: 142
+y: 1168
+w: 576
+h: 104
+```
+
+### 8.13.1 Bouton “MONTANT LIBRE”
+
+```txt
+x: 142
+y: 1168
+w: 124
+h: 104
+radius: 14
+```
+
+- Fond : `#0A0613` à 40 %.
+- Bordure : `#B7229C` à 75 %, 1 px.
+- Icône : carré/grille rose, taille 23 px, x centré.
+- Texte :
+  - ligne 1 : `MONTANT`
+  - ligne 2 : `LIBRE`
+  - taille : 13 px.
+  - poids : 800.
+  - couleur : `#FFFFFF`.
+  - tracking : 1 px.
+
+### 8.13.2 CTA “ENVOYER LE TIP”
+
+```txt
+x: 289
+y: 1168
+w: 280
+h: 104
+radius: 13
+```
+
+- Dégradé rose horizontal.
+- Glow externe :
+  - couleur : `#FF1B8D`.
+  - blur : 32 px.
+  - spread : 2 px.
+  - opacité : 45 %.
+- Icône éclair :
+  - x : 331.
+  - y : 1205.
+  - taille : 24 px.
+  - couleur : blanc.
+- Texte :
+  - `ENVOYER LE TIP`
+  - taille : 16 px.
+  - poids : 900.
+  - couleur : blanc.
+  - tracking : 2 px.
+- Tout le contenu centré horizontalement.
+
+### 8.13.3 Bouton “RECHARGER”
+
+```txt
+x: 592
+y: 1168
+w: 125
+h: 104
+radius: 14
+```
+
+- Fond : `#050A14` à 42 %.
+- Bordure : `#008BEA` à 85 %, 1 px.
+- Icône portefeuille cyan :
+  - taille : 25 px.
+- Texte :
+  - `RECHARGER`
+  - taille : 13 px.
+  - poids : 800.
+  - couleur : `#FFFFFF`.
+  - tracking : 1 px.
+
+---
+
+## 8.14 Bottom navigation
+
+### Position
+
+```txt
+x: 137
+y: 1315
+w: 590
+h: 104
+radius: 26
+```
+
+### Apparence
+
+- Fond : `#05030D` à 62 %.
+- Blur : sigma 18.
+- Bordure : `#352040` à 85 %, 1 px.
+- Trois onglets égaux.
+
+### Onglets
+
+| Onglet | X centre | Icône | Label | État |
+|---|---:|---|---|---|
+| Fan | 235 | groupe utilisateurs | Fan | actif |
+| DJ | 432 | disque/note | DJ | inactif |
+| Profil | 622 | silhouette | Profil | inactif |
+
+### Onglet actif Fan
+
+- Icône : `#FF1B8D`, taille 28 px.
+- Label : `#FF5FB5`, taille 17 px.
+- Point actif :
+  - diamètre 4 px.
+  - y : 1407.
+  - couleur `#FF1B8D`.
+  - Glow léger rose.
+
+### Onglets inactifs
+
+- Icône : `#676079`.
+- Label : `#A29BB1`.
+- Pas de point actif.
+
+---
+
+## 9. Typographies
+
+### 9.1 Polices obligatoires
+
+| Usage | Police recommandée | Remarque |
+|---|---|---|
+| Gros titre DJ / MASTER BEAT | `Bebas Neue` ou `Oswald` | lettres condensées, hautes |
+| Interface générale | `Inter` ou `SF Pro Display` | rendu premium mobile |
+| Boutons uppercase | `Inter ExtraBold` | tracking fort |
+| Labels section | `Inter Bold` | tracking 5 px |
+
+### 9.2 Déclaration Flutter
+
+```yaml
+flutter:
+  fonts:
+    - family: BebasNeue
+      fonts:
+        - asset: assets/fonts/BebasNeue-Regular.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Inter-Black.ttf
+          weight: 900
+```
+
+---
+
+## 10. Animations
+
+Les animations doivent rester subtiles et ne pas casser le rendu statique.
+
+### 10.1 Glow du bouton 10 €
+
+- Animation : pulse.
+- Durée : 2200 ms.
+- Courbe : `Curves.easeInOut`.
+- Blur : 20 → 32 → 20.
+- Opacité : 0.65 → 0.95 → 0.65.
+
+### 10.2 CTA “ENVOYER LE TIP”
+
+- Tap down : scale 0.97.
+- Tap up : scale 1.0.
+- Durée : 120 ms.
+- Glow augmente de 15 % au hover web / press mobile.
+
+### 10.3 Fond néon
+
+- Très léger mouvement optionnel sur faisceaux lumineux.
+- Translation maximale : 8 px source.
+- Durée : 8–12 secondes.
+- Désactiver si l’utilisateur a “reduce motion”.
+
+---
+
+## 11. États interactifs
+
+### 11.1 Sélection montant
+
+Montants rapides disponibles :
+
+```txt
+5 €
+10 €
+15 €
+20 €
+```
+
+État par défaut :
+
+```txt
+10 €
+```
+
+Au tap :
+
+- Mettre à jour le montant sélectionné.
+- Déplacer le glow vers le bouton sélectionné.
+- Mettre à jour le panneau `VOTRE TIP`.
+- Ne pas modifier la position des boutons.
+- Le texte du panneau garde le même style.
+
+### 11.2 Montant libre
+
+Au tap sur `MONTANT LIBRE` :
+
+- Ouvrir une bottom sheet sombre.
+- Input numérique.
+- Minimum : 1 €.
+- Maximum : selon solde ou limite produit.
+- Bouton “Valider”.
+- Si montant libre choisi, afficher ce montant dans le panneau central.
+- Le bouton rapide sélectionné perd son glow.
+
+### 11.3 Envoyer le tip
+
+Préconditions :
+
+- Utilisateur connecté.
+- Solde suffisant.
+- DJ live disponible.
+- Montant > 0.
+- Message ≤ 120 caractères.
+
+Au tap :
+
+1. Afficher loader dans CTA sans changer sa taille.
+2. Débiter wallet.
+3. Créer transaction tip.
+4. Afficher confirmation courte :
+   - toast / snackbar sombre.
+   - texte : `Tip envoyé à DJ Master Beat`.
+5. Mettre à jour le solde wallet.
+
+État erreur :
+
+- Solde insuffisant : ouvrir écran recharge.
+- Live terminé : afficher message.
+- Réseau indisponible : afficher retry.
+
+### 11.4 Recharger
+
+Au tap :
+
+- Naviguer vers l’écran recharge wallet.
+- Conserver l’ambiance visuelle dark/neon.
+
+---
+
+## 12. Données nécessaires
+
+### 12.1 Modèle DJ live
+
+```dart
+class LiveDj {
+  final String id;
+  final String stageName; // DJ Master Beat
+  final String genreLine; // House • Techno • Live Set
+  final String heroImageUrl;
+  final int liveViewers; // 340
+  final int fanCount; // 12500
+  final bool isLive; // true
+}
+```
+
+### 12.2 Modèle wallet
+
+```dart
+class WalletBalance {
+  final String userId;
+  final int cents; // 2000 for 20,00 €
+  final String currency; // EUR
+}
+```
+
+### 12.3 Modèle tip
+
+```dart
+class TipIntent {
+  final String fanId;
+  final String djId;
+  final int amountCents;
+  final String? message;
+  final DateTime createdAt;
+}
+```
+
+---
+
+## 13. Formatage
+
+### 13.1 Montants
+
+- Wallet : `20,00 €`
+- Boutons rapides : `5€`, `10€`, `15€`, `20€`
+- Panneau central : `10 €`
+
+Respecter les espaces exactement :
+
+```txt
+Wallet: 20,00 €
+Boutons: 10€
+Panneau: 10 €
+```
+
+### 13.2 Fans
+
+```txt
+12500 -> 12.5K
+```
+
+Utiliser le séparateur décimal `.` pour les abréviations type réseau social, comme dans le mockup.
+
+---
+
+## 14. Accessibilité
+
+Même si le rendu est très graphique, maintenir :
+
+- Contraste texte principal ≥ AA.
+- Labels sémantiques sur tous les boutons.
+- Taille minimale tap target : 44 px logique.
+- Compatibilité lecteur écran :
+  - `Envoyer un tip de 10 euros à DJ Master Beat`
+  - `Recharger le portefeuille`
+  - `Choisir un montant de 15 euros`
+- Respect du réglage système reduce motion.
+
+---
+
+## 15. Contraintes techniques Flutter
+
+### 15.1 Widgets recommandés
+
+- `Stack` pour le fond et les halos.
+- `BackdropFilter` pour cartes glass.
+- `ShaderMask` pour le texte rose gradient `10 €`.
+- `CustomPainter` pour :
+  - faisceaux néon si pas d’image de fond.
+  - halos radiaux.
+  - icônes simples si SVG non disponible.
+- `AnimatedContainer` pour sélection de montant.
+- `GestureDetector` ou `InkWell` sans ripple Material visible.
+
+### 15.2 Interdits
+
+- Ne pas utiliser de fond blanc.
+- Ne pas utiliser Material default colors.
+- Ne pas utiliser un bouton Material standard sans custom decoration.
+- Ne pas remplacer le DJ par une image claire.
+- Ne pas supprimer le glow rose.
+- Ne pas arrondir différemment les cartes.
+- Ne pas réduire les espacements verticaux.
+- Ne pas changer la hiérarchie : héro → tips → montant → message → actions → nav.
+
+---
+
+## 16. Blueprint Flutter simplifié
+
+```dart
+class MoneyPullupHomePage extends StatefulWidget {
+  const MoneyPullupHomePage({super.key});
+
+  @override
+  State<MoneyPullupHomePage> createState() => _MoneyPullupHomePageState();
+}
+
+class _MoneyPullupHomePageState extends State<MoneyPullupHomePage> {
+  int selectedAmount = 10;
+  final messageController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF03020A),
+      resizeToAvoidBottomInset: false,
+      body: Stack(
+        children: [
+          const Positioned.fill(child: HomeNeonBackground()),
+          SafeArea(
+            child: Stack(
+              children: [
+                Positioned(
+                  left: sx(context, 560),
+                  top: sy(context, 80),
+                  child: const TopWalletPill(balanceText: '20,00 €'),
+                ),
+                Positioned(
+                  left: sx(context, 136),
+                  top: sy(context, 92),
+                  child: const HeroDjCard(),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: sy(context, 564),
+                  child: const SectionTitle('CHOISISSEZ VOTRE TIP'),
+                ),
+                Positioned(
+                  left: sx(context, 157),
+                  top: sy(context, 602),
+                  child: TipAmountSelector(
+                    selectedAmount: selectedAmount,
+                    onChanged: (amount) => setState(() => selectedAmount = amount),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: sy(context, 763),
+                  child: const SectionTitle('VOTRE TIP'),
+                ),
+                Positioned(
+                  left: sx(context, 148),
+                  top: sy(context, 786),
+                  child: SelectedTipDisplay(amount: selectedAmount),
+                ),
+                Positioned(
+                  left: sx(context, 304),
+                  top: sy(context, 918),
+                  child: const MoneyPullupInfo(),
+                ),
+                Positioned(
+                  left: sx(context, 148),
+                  top: sy(context, 983),
+                  child: MessageInput(controller: messageController),
+                ),
+                Positioned(
+                  left: sx(context, 142),
+                  top: sy(context, 1092),
+                  child: const ActionButtonsRow(),
+                ),
+                Positioned(
+                  left: sx(context, 137),
+                  bottom: sy(context, 38),
+                  child: const MoneyPullupBottomNav(activeIndex: 0),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+```
+
+> Les valeurs `top` dans ce blueprint sont ajustées pour le SafeArea.  
+> Pour un export marketing complet avec status bar et coque smartphone, utiliser les coordonnées absolues du chapitre 7.
+
+---
+
+## 17. QA pixel-perfect
+
+### 17.1 Comparaison visuelle obligatoire
+
+Créer un export 4K de l’écran :
+
+```txt
+2160 × 3840 px
+```
+
+Puis comparer avec la référence upscale 2.5x :
+
+- Tolérance position : ±2 px en 4K.
+- Tolérance couleur : ΔE ≤ 3 sur surfaces principales.
+- Les halos peuvent varier de ±5 px si visuellement identiques.
+- Les textes doivent avoir la même graisse et la même largeur visuelle.
+- Les boutons doivent conserver leurs diamètres et positions.
+
+### 17.2 Checklist validation
+
+- [ ] Fond noir-violet avec faisceaux bleu/magenta.
+- [ ] Carte DJ en haut avec image sombre identique en intention.
+- [ ] Badge LIVE rose avec point blanc.
+- [ ] Wallet `20,00 €` en haut droit.
+- [ ] Titre `DJ MASTER BEAT` blanc, très condensé.
+- [ ] Ligne `House • Techno • Live Set`.
+- [ ] Stats `12.5K Fans` et `340 En live`.
+- [ ] Label `CHOISISSEZ VOTRE TIP`.
+- [ ] Boutons `5€ 10€ 15€ 20€`.
+- [ ] `10€` sélectionné avec glow rose.
+- [ ] Label `VOTRE TIP`.
+- [ ] Panneau central `10 €` en grand rose.
+- [ ] Bloc `Money Pull-up`.
+- [ ] Champ message avec compteur `0/120`.
+- [ ] Bouton `MONTANT LIBRE`.
+- [ ] CTA rose `ENVOYER LE TIP`.
+- [ ] Bouton `RECHARGER`.
+- [ ] Bottom nav avec `Fan` actif rose.
+- [ ] Aucun changement de couleur ou d’icône non validé.
+- [ ] Aucun padding interprété librement.
+
+---
+
+## 18. Critères d’acceptation développeur
+
+L’écran est accepté uniquement si :
+
+1. L’export 4K correspond au mockup fourni avec une différence visuelle quasi imperceptible.
+2. Le bouton `10€` est sélectionné par défaut.
+3. Le montant central affiche `10 €`.
+4. Le wallet affiche `20,00 €`.
+5. Le CTA reste visible et parfaitement centré.
+6. Le champ message compte jusqu’à 120 caractères.
+7. Le bottom nav affiche `Fan` actif.
+8. Le thème reste strictement dark/neon.
+9. Les assets sont en WebP/SVG optimisés.
+10. Aucun composant Material brut ne dégrade le rendu.
+
+---
+
+## 19. Nommage conseillé des fichiers
+
+```txt
+lib/features/home/presentation/pages/money_pullup_home_page.dart
+lib/features/home/presentation/widgets/home_neon_background.dart
+lib/features/home/presentation/widgets/top_wallet_pill.dart
+lib/features/home/presentation/widgets/hero_dj_card.dart
+lib/features/home/presentation/widgets/tip_amount_selector.dart
+lib/features/home/presentation/widgets/selected_tip_display.dart
+lib/features/home/presentation/widgets/money_pullup_info.dart
+lib/features/home/presentation/widgets/message_input.dart
+lib/features/home/presentation/widgets/action_buttons_row.dart
+lib/features/home/presentation/widgets/money_pullup_bottom_nav.dart
+
+assets/images/moneypullup/home_neon_bg_4k.webp
+assets/images/moneypullup/dj_master_beat_hero.webp
+assets/icons/moneypullup/wallet.svg
+assets/icons/moneypullup/heart.svg
+assets/icons/moneypullup/user_live.svg
+assets/icons/moneypullup/audio_equalizer.svg
+assets/icons/moneypullup/dollar_circle.svg
+assets/icons/moneypullup/lightning.svg
+assets/icons/moneypullup/free_amount.svg
+assets/icons/moneypullup/recharge_wallet.svg
+assets/icons/moneypullup/nav_fan.svg
+assets/icons/moneypullup/nav_dj.svg
+assets/icons/moneypullup/nav_profile.svg
+```
+
+---
+
+## 20. Résumé final
+
+Cette page doit donner l’impression d’un **écran premium de soutien live à un DJ**, avec une action centrale très claire : **envoyer un tip**.
+
+L’utilisateur doit comprendre en moins d’une seconde :
+
+```txt
+DJ Master Beat est en live.
+Mon solde est de 20,00 €.
+Je peux envoyer rapidement 10 €.
+Je peux écrire un message.
+Je peux recharger ou choisir un montant libre.
+```
+
+La priorité absolue est la reproduction visuelle **identique au mockup**, en 4K, sans interprétation graphique.
