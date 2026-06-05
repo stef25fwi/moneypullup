@@ -30,9 +30,10 @@ interface Props {
   amount: number;
   isSelected: boolean;
   onPress: (amount: number) => void;
+  size?: number;
 }
 
-export function AmountChip3D({ amount, isSelected, onPress }: Props) {
+export function AmountChip3D({ amount, isSelected, onPress, size: sizeProp }: Props) {
   const cfg = CHIP_CONFIGS[amount] ?? CHIP_CONFIGS[10];
 
   const scale = useSharedValue(1);
@@ -78,7 +79,8 @@ export function AmountChip3D({ amount, isSelected, onPress }: Props) {
     onPress(amount);
   }, [amount, onPress, scale]);
 
-  const size = isSelected ? 80 : 72;
+  const base = sizeProp ?? 68;
+  const size = isSelected ? Math.round(base * 1.1) : base;
   const radius = size / 2;
 
   return (

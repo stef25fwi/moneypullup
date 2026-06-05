@@ -29,182 +29,140 @@ import { GlowBackground } from "@/components/GlowBackground";
 import { StripeModal } from "@/components/StripeModal";
 import { useTips } from "@/contexts/TipsContext";
 
-// ─── Design tokens (PRD palette) ─────────────────────────────────────────────
 const C = {
-  bgCard: "#0C0A15",
-  bgCardPurple: "#1D0531",
   neonPink: "#FF1B8D",
-  hotPink: "#EF167F",
   electricBlue: "#008BEA",
-  neonPurple: "#8D2CFF",
-  darkPurpleBorder: "#3B1452",
   white: "#FFFFFF",
   textSoft: "#C9C3D8",
   textMuted: "#8D879D",
+  darkPurpleBorder: "#3B1452",
 };
 
 const PRESET_AMOUNTS = [5, 10, 15, 20];
 
-// ─── Pulsing glow wrapper ────────────────────────────────────────────────────
+// ─── Pulsing glow ─────────────────────────────────────────────────────────────
 function PulseGlow({ color, children }: { color: string; children: React.ReactNode }) {
-  const glow = useSharedValue(0.45);
+  const glow = useSharedValue(0.5);
   useEffect(() => {
     glow.value = withRepeat(
       withSequence(
-        withTiming(0.95, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0.45, { duration: 1600, easing: Easing.inOut(Easing.sin) })
+        withTiming(0.9, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.5, { duration: 1500, easing: Easing.inOut(Easing.sin) })
       ),
       -1,
       false
     );
   }, []);
-  const style = useAnimatedStyle(() => ({ shadowOpacity: glow.value }));
+  const style = useAnimatedStyle(() => ({
+    shadowOpacity: glow.value,
+  }));
   return (
     <Animated.View
-      style={[
-        { shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowRadius: 28, elevation: 10 },
-        style,
-      ]}
+      style={[{ shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowRadius: 22, elevation: 8 }, style]}
     >
       {children}
     </Animated.View>
   );
 }
 
-// ─── DJ Hero card ────────────────────────────────────────────────────────────
+// ─── DJ hero card (compact) ───────────────────────────────────────────────────
 function DjHeroCard({ dj, onPress }: { dj: any; onPress: () => void }) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={styles.heroCard}>
-      {/* Background art */}
       <LinearGradient
-        colors={["#1A0340", "#0D0128", "#200540"]}
+        colors={["#1A0340", "#0D0128", "#20054088"]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      {/* Side light effects */}
-      <View style={styles.heroGlowLeft} />
-      <View style={styles.heroGlowRight} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,27,141,0.04)" }]} />
 
-      {/* Content */}
-      <View style={styles.heroContent}>
-        {/* LIVE badge */}
+      {/* Top row: LIVE badge + avatar + DJ info + chevron */}
+      <View style={styles.heroRow}>
         <View style={styles.liveBadge}>
           <View style={styles.liveDot} />
           <Text style={styles.liveText}>LIVE</Text>
         </View>
 
-        {/* DJ avatar */}
-        <View style={styles.djAvatarWrap}>
-          <LinearGradient
-            colors={["#FF1B8D", "#8D2CFF"]}
-            style={styles.djAvatarRing}
-          >
-            <View style={styles.djAvatarInner}>
-              <Text style={styles.djEmoji}>{dj?.avatar ?? "🎧"}</Text>
-            </View>
-          </LinearGradient>
-        </View>
+        {/* Avatar */}
+        <LinearGradient colors={["#FF1B8D", "#8D2CFF"]} style={styles.avatarRing}>
+          <View style={styles.avatarInner}>
+            <Text style={styles.avatarEmoji}>{dj?.avatar ?? "🎧"}</Text>
+          </View>
+        </LinearGradient>
 
-        {/* DJ info */}
+        {/* Name + genre */}
         <View style={styles.djInfo}>
-          <Text style={styles.djLabel}>DJ</Text>
+          <Text style={styles.djSubLabel}>DJ</Text>
           <Text style={styles.djName} numberOfLines={1}>
             {(dj?.name ?? "MASTER BEAT").toUpperCase()}
           </Text>
-          {/* Equalizer bars */}
-          <View style={styles.eqRow}>
-            <MaterialCommunityIcons name="music" size={12} color={C.neonPink} />
-            <Text style={styles.djGenre}>{dj?.genre ?? "House • Techno • Live Set"}</Text>
+          <View style={styles.genreRow}>
+            <MaterialCommunityIcons name="music" size={10} color={C.neonPink} />
+            <Text style={styles.djGenre} numberOfLines={1}>{dj?.genre ?? "House • Techno"}</Text>
           </View>
         </View>
 
-        <Feather name="chevron-down" size={16} color="rgba(255,255,255,0.4)" />
+        <Feather name="chevron-down" size={14} color="rgba(255,255,255,0.35)" />
       </View>
 
-      {/* Stats block */}
-      <View style={styles.statsBlock}>
+      {/* Stats row */}
+      <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <Feather name="heart" size={14} color={C.neonPink} />
+          <Feather name="heart" size={11} color={C.neonPink} />
           <Text style={styles.statValue}>12.5K</Text>
           <Text style={styles.statLabel}>Fans</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Feather name="users" size={14} color={C.neonPink} />
+          <Feather name="users" size={11} color={C.neonPink} />
           <Text style={styles.statValue}>340</Text>
           <Text style={styles.statLabel}>En live</Text>
         </View>
       </View>
-
-      {/* Bottom overlay */}
-      <LinearGradient
-        colors={["transparent", "rgba(3,2,10,0.7)"]}
-        style={styles.heroBottomOverlay}
-        pointerEvents="none"
-      />
     </TouchableOpacity>
   );
 }
 
-// ─── Neon amount panel ───────────────────────────────────────────────────────
+// ─── Amount panel ─────────────────────────────────────────────────────────────
 function NeonAmountPanel({ amount }: { amount: number }) {
-  const displayText = amount > 0 ? `${amount} €` : "0 €";
   return (
     <PulseGlow color={C.neonPink}>
       <View style={styles.amountPanel}>
-        <Text style={styles.amountText}>{displayText}</Text>
+        <Text style={styles.amountText}>{amount > 0 ? `${amount} €` : "0 €"}</Text>
       </View>
     </PulseGlow>
   );
 }
 
-// ─── Premium action button ───────────────────────────────────────────────────
-function PremiumActionButton({
-  label,
-  icon,
-  onPress,
-  variant,
-  disabled,
-  success,
+// ─── Premium action button ────────────────────────────────────────────────────
+function ActionBtn({
+  label, icon, onPress, variant, disabled, success,
 }: {
-  label: string;
-  icon: string;
-  onPress: () => void;
-  variant: "libre" | "send" | "recharge";
-  disabled?: boolean;
-  success?: boolean;
+  label: string; icon: string; onPress: () => void;
+  variant: "libre" | "send" | "recharge"; disabled?: boolean; success?: boolean;
 }) {
   const scale = useSharedValue(1);
-  const handlePress = () => {
-    scale.value = withSequence(
-      withSpring(0.95, { damping: 8 }),
-      withSpring(1, { damping: 10 })
-    );
+  const tap = () => {
+    scale.value = withSequence(withSpring(0.94, { damping: 8 }), withSpring(1, { damping: 10 }));
     onPress();
   };
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   if (variant === "send") {
     return (
-      <Animated.View style={[styles.sendBtnWrap, animStyle]}>
+      <Animated.View style={[{ flex: 1 }, animStyle]}>
         <PulseGlow color={success ? "#00DD77" : C.neonPink}>
-          <TouchableOpacity onPress={handlePress} disabled={disabled} activeOpacity={0.88}>
+          <TouchableOpacity onPress={tap} disabled={disabled} activeOpacity={0.87}>
             <LinearGradient
               colors={
-                success
-                  ? ["#00BB55", "#00DD66", "#009944"]
-                  : disabled
-                  ? ["#2A1540", "#1E0F30", "#2A1540"]
+                success ? ["#00BB55", "#00CC66", "#009944"]
+                  : disabled ? ["#221133", "#1A0D28"]
                   : ["#ED1581", "#FF1B8D", "#E90F74"]
               }
               start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
               style={styles.sendBtn}
             >
-              <Feather
-                name={success ? "check-circle" : (icon as any)}
-                size={22}
-                color={disabled ? "#555" : "#FFF"}
-              />
+              <Feather name={success ? "check-circle" : (icon as any)} size={18} color={disabled ? "#555" : "#FFF"} />
               <Text style={[styles.sendBtnLabel, disabled && { color: "#555" }]}>
                 {success ? "ENVOYÉ !" : label}
               </Text>
@@ -215,18 +173,23 @@ function PremiumActionButton({
     );
   }
 
-  const borderColor = variant === "libre" ? "rgba(183,34,156,0.75)" : "rgba(0,139,234,0.85)";
-  const bgColor = variant === "libre" ? "rgba(10,6,19,0.4)" : "rgba(5,10,20,0.42)";
-  const iconColor = variant === "libre" ? C.neonPink : C.electricBlue;
-
+  const isLibre = variant === "libre";
   return (
     <Animated.View style={[styles.sideBtn, animStyle]}>
       <TouchableOpacity
-        onPress={handlePress}
-        activeOpacity={0.85}
-        style={[styles.sideBtnInner, { backgroundColor: bgColor, borderColor }]}
+        onPress={tap} activeOpacity={0.85}
+        style={[
+          styles.sideBtnInner,
+          {
+            borderColor: isLibre ? "rgba(183,34,156,0.75)" : "rgba(0,139,234,0.85)",
+            backgroundColor: isLibre ? "rgba(10,6,19,0.4)" : "rgba(5,10,20,0.42)",
+          },
+        ]}
       >
-        <MaterialCommunityIcons name={icon as any} size={22} color={iconColor} />
+        <MaterialCommunityIcons
+          name={icon as any} size={18}
+          color={isLibre ? C.neonPink : C.electricBlue}
+        />
         {label.split("\n").map((line, i) => (
           <Text key={i} style={styles.sideBtnLabel}>{line}</Text>
         ))}
@@ -235,10 +198,13 @@ function PremiumActionButton({
   );
 }
 
-// ─── Main screen ─────────────────────────────────────────────────────────────
+// ─── Screen ───────────────────────────────────────────────────────────────────
 export default function FanScreen() {
   const insets = useSafeAreaInsets();
-  const { wallet, djs, selectedDj, setSelectedDj, sendTip, openStripeModal, isStripeModalVisible, closeStripeModal } = useTips();
+  const {
+    wallet, djs, selectedDj, setSelectedDj,
+    sendTip, openStripeModal, isStripeModalVisible, closeStripeModal,
+  } = useTips();
 
   const [selectedAmount, setSelectedAmount] = useState<number>(10);
   const [customAmount, setCustomAmount] = useState("");
@@ -253,32 +219,21 @@ export default function FanScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const handleSendTip = useCallback(() => {
-    if (!selectedDj) {
-      Alert.alert("Aucun DJ sélectionné", "Veuillez choisir un DJ.");
-      return;
-    }
-    if (effectiveAmount <= 0) {
-      Alert.alert("Montant invalide", "Veuillez saisir un montant valide.");
-      return;
-    }
+    if (!selectedDj) { Alert.alert("Aucun DJ", "Veuillez choisir un DJ."); return; }
+    if (effectiveAmount <= 0) { Alert.alert("Montant invalide", "Choisissez un montant."); return; }
     if (wallet.balance < effectiveAmount) {
-      Alert.alert(
-        "Solde insuffisant",
-        `Votre solde est de ${wallet.balance.toFixed(2)}€.`,
-        [
-          { text: "Annuler", style: "cancel" },
-          { text: "Recharger", onPress: openStripeModal },
-        ]
-      );
+      Alert.alert("Solde insuffisant", `Solde: ${wallet.balance.toFixed(2)}€`, [
+        { text: "Annuler", style: "cancel" },
+        { text: "Recharger", onPress: openStripeModal },
+      ]);
       return;
     }
-    const success = sendTip(selectedDj.id, effectiveAmount, message);
-    if (success) {
+    if (sendTip(selectedDj.id, effectiveAmount, message)) {
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setLastSentSuccess(true);
       setLastSentDjName(selectedDj.name);
       setMessage("");
-      setTimeout(() => setLastSentSuccess(false), 3500);
+      setTimeout(() => setLastSentSuccess(false), 3000);
     }
   }, [selectedDj, effectiveAmount, wallet.balance, sendTip, message, openStripeModal]);
 
@@ -288,68 +243,64 @@ export default function FanScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingTop: topPad + 6, paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 100 }]}
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingTop: topPad + 4, paddingBottom: Platform.OS === "web" ? 80 : insets.bottom + 80 },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          scrollEnabled={showDjPicker || showCustom || lastSentSuccess || wallet.balance < 5}
         >
-
-          {/* ── Wallet pill ── */}
+          {/* ── Top bar ── */}
           <View style={styles.topBar}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.appTag}>MONEY PULL-UP</Text>
-            </View>
+            <Text style={styles.appTag}>MONEY PULL-UP</Text>
             <TouchableOpacity onPress={openStripeModal}>
               <View style={styles.walletPill}>
-                <MaterialCommunityIcons name="wallet" size={16} color={C.neonPink} />
+                <MaterialCommunityIcons name="wallet" size={14} color={C.neonPink} />
                 <Text style={styles.walletText}>{wallet.balance.toFixed(2)} €</Text>
               </View>
             </TouchableOpacity>
           </View>
 
-          {/* ── DJ Hero Card ── */}
+          {/* ── DJ Hero card ── */}
           <DjHeroCard dj={selectedDj} onPress={() => setShowDjPicker((v) => !v)} />
 
-          {/* ── DJ Picker dropdown ── */}
+          {/* ── DJ picker ── */}
           {showDjPicker && (
             <View style={styles.djPicker}>
-              {liveDjs.length === 0 ? (
-                <Text style={[styles.sectionLabel, { textAlign: "center", paddingVertical: 12 }]}>
-                  Aucun DJ en live pour le moment
-                </Text>
-              ) : (
-                liveDjs.map((dj) => {
-                  const isSel = selectedDj?.id === dj.id;
-                  return (
-                    <TouchableOpacity
-                      key={dj.id}
-                      onPress={() => { setSelectedDj(dj); setShowDjPicker(false); }}
-                      style={[styles.djPickerRow, isSel && { backgroundColor: "rgba(255,27,141,0.12)" }]}
-                    >
-                      <Text style={{ fontSize: 20 }}>{dj.avatar}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.djPickerName, isSel && { color: C.neonPink }]}>{dj.name}</Text>
-                        <Text style={styles.djPickerGenre}>{dj.genre}</Text>
-                      </View>
-                      <View style={styles.livePillSmall}>
-                        <Text style={styles.liveTextSmall}>LIVE</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
+              {liveDjs.length === 0
+                ? <Text style={styles.emptyPicker}>Aucun DJ en live</Text>
+                : liveDjs.map((dj) => {
+                    const sel = selectedDj?.id === dj.id;
+                    return (
+                      <TouchableOpacity
+                        key={dj.id}
+                        onPress={() => { setSelectedDj(dj); setShowDjPicker(false); }}
+                        style={[styles.djRow, sel && { backgroundColor: "rgba(255,27,141,0.1)" }]}
+                      >
+                        <Text style={{ fontSize: 18 }}>{dj.avatar}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.djRowName, sel && { color: C.neonPink }]}>{dj.name}</Text>
+                          <Text style={styles.djRowGenre}>{dj.genre}</Text>
+                        </View>
+                        <View style={styles.livePillSm}><Text style={styles.liveTxtSm}>LIVE</Text></View>
+                      </TouchableOpacity>
+                    );
+                  })}
             </View>
           )}
 
           {/* ── Section label ── */}
           <Text style={styles.sectionLabel}>CHOISISSEZ VOTRE TIP</Text>
 
-          {/* ── 3D Coin buttons ── */}
+          {/* ── Coins ── */}
           <View style={styles.coinsRow}>
             {PRESET_AMOUNTS.map((amt) => (
               <AmountChip3D
                 key={amt}
                 amount={amt}
                 isSelected={!showCustom && selectedAmount === amt}
+                size={58}
                 onPress={(a) => {
                   setSelectedAmount(a);
                   setShowCustom(false);
@@ -359,14 +310,14 @@ export default function FanScreen() {
             ))}
           </View>
 
-          {/* ── VOTRE TIP label ── */}
-          <Text style={[styles.sectionLabel, { marginTop: 4 }]}>VOTRE TIP</Text>
+          {/* ── VOTRE TIP ── */}
+          <Text style={[styles.sectionLabel, { marginTop: 2 }]}>VOTRE TIP</Text>
 
-          {/* ── Neon amount panel ── */}
+          {/* ── Amount panel ── */}
           <NeonAmountPanel amount={effectiveAmount} />
 
-          {/* ── Money Pull-up info block ── */}
-          <View style={styles.infoBlock}>
+          {/* ── Info block ── */}
+          <View style={styles.infoRow}>
             <View style={styles.dollarCircle}>
               <Text style={styles.dollarSign}>$</Text>
             </View>
@@ -377,25 +328,25 @@ export default function FanScreen() {
           </View>
 
           {/* ── Message input ── */}
-          <View style={styles.messageWrap}>
+          <View style={styles.msgWrap}>
             <TextInput
               value={message}
               onChangeText={setMessage}
-              placeholder="Un message pour le DJ ... (optionnel)"
+              placeholder="Message pour le DJ... (optionnel)"
               placeholderTextColor="#A9A3B8"
               maxLength={120}
-              style={styles.messageInput}
+              style={styles.msgInput}
             />
             <Text style={styles.charCount}>{message.length}/120</Text>
           </View>
 
-          {/* ── Custom amount input ── */}
+          {/* ── Custom amount ── */}
           {showCustom && (
             <TextInput
               value={customAmount}
               onChangeText={setCustomAmount}
               placeholder={`Max: ${wallet.balance.toFixed(2)}€`}
-              placeholderTextColor="rgba(201,195,216,0.4)"
+              placeholderTextColor="rgba(201,195,216,0.35)"
               keyboardType="numeric"
               style={styles.customInput}
             />
@@ -403,45 +354,32 @@ export default function FanScreen() {
 
           {/* ── 3 Action buttons ── */}
           <View style={styles.actionRow}>
-            <PremiumActionButton
-              label={"MONTANT\nLIBRE"}
-              icon="view-grid-outline"
-              variant="libre"
+            <ActionBtn
+              label={"MONTANT\nLIBRE"} icon="view-grid-outline" variant="libre"
               onPress={() => { setShowCustom((v) => !v); if (Platform.OS !== "web") Haptics.selectionAsync(); }}
             />
-            <PremiumActionButton
-              label="ENVOYER LE TIP"
-              icon="zap"
-              variant="send"
+            <ActionBtn
+              label="ENVOYER LE TIP" icon="zap" variant="send"
               disabled={!selectedDj || effectiveAmount <= 0}
               success={lastSentSuccess}
               onPress={handleSendTip}
             />
-            <PremiumActionButton
-              label="RECHARGER"
-              icon="wallet-plus"
-              variant="recharge"
-              onPress={openStripeModal}
-            />
+            <ActionBtn label="RECHARGER" icon="wallet-plus" variant="recharge" onPress={openStripeModal} />
           </View>
 
-          {/* ── Success banner ── */}
+          {/* ── Success toast ── */}
           {lastSentSuccess && (
-            <View style={styles.successBanner}>
-              <MaterialCommunityIcons name="check-circle-outline" size={16} color="#F59E0B" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.successTitle}>Tip envoyé à {lastSentDjName}</Text>
-                <Text style={styles.successSub}>En attente d'acceptation par le DJ</Text>
-              </View>
+            <View style={styles.toast}>
+              <MaterialCommunityIcons name="check-circle-outline" size={14} color="#F59E0B" />
+              <Text style={styles.toastText}>Tip envoyé à {lastSentDjName} — en attente du DJ</Text>
             </View>
           )}
 
-          {/* Low balance warning */}
           {wallet.balance < 5 && (
-            <TouchableOpacity onPress={openStripeModal} style={styles.lowBalBar}>
-              <Feather name="alert-circle" size={13} color="#F59E0B" />
-              <Text style={styles.lowBalText}>Solde faible — Appuyez pour recharger</Text>
-              <Feather name="chevron-right" size={13} color="#F59E0B" />
+            <TouchableOpacity onPress={openStripeModal} style={styles.lowBal}>
+              <Feather name="alert-circle" size={12} color="#F59E0B" />
+              <Text style={styles.lowBalText}>Solde faible — Recharger</Text>
+              <Feather name="chevron-right" size={12} color="#F59E0B" />
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -452,177 +390,144 @@ export default function FanScreen() {
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#03020A" },
-  scroll: { paddingHorizontal: 16 },
+  scroll: { paddingHorizontal: 14 },
 
   // Top bar
-  topBar: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
-  appTag: { fontSize: 10, fontFamily: "Inter_700Bold", color: "rgba(201,195,216,0.5)", letterSpacing: 3 },
+  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  appTag: { fontSize: 9, fontFamily: "Inter_700Bold", color: "rgba(201,195,216,0.45)", letterSpacing: 3 },
   walletPill: {
-    flexDirection: "row", alignItems: "center", gap: 7,
-    paddingHorizontal: 14, paddingVertical: 10,
-    backgroundColor: "rgba(12,10,21,0.58)", borderRadius: 28,
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 12, paddingVertical: 7,
+    backgroundColor: "rgba(12,10,21,0.6)", borderRadius: 24,
     borderWidth: 1, borderColor: "rgba(74,24,93,0.75)",
   },
-  walletText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: C.white },
+  walletText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" },
 
   // Hero card
   heroCard: {
-    borderRadius: 18, overflow: "hidden", marginBottom: 14,
-    borderWidth: 1, borderColor: "rgba(52,35,74,0.55)",
-    minHeight: 160,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 18, elevation: 12,
+    borderRadius: 16, overflow: "hidden", marginBottom: 8,
+    borderWidth: 1, borderColor: "rgba(52,35,74,0.5)",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 14, elevation: 10,
   },
-  heroGlowLeft: {
-    position: "absolute", top: 0, left: 0, bottom: 0, width: "40%",
-    backgroundColor: "rgba(255,27,141,0.06)",
-  },
-  heroGlowRight: {
-    position: "absolute", top: 0, right: 0, bottom: 0, width: "35%",
-    backgroundColor: "rgba(0,139,234,0.06)",
-  },
-  heroBottomOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, height: 60 },
-  heroContent: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, paddingBottom: 10 },
+  heroRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, paddingBottom: 8 },
   liveBadge: {
-    position: "absolute", top: 12, left: 14,
-    flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: "#E91679", borderRadius: 7, paddingHorizontal: 8, paddingVertical: 4,
+    position: "absolute", top: 10, left: 12,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "#E91679", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
   },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#fff" },
-  liveText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.7 },
-  djAvatarWrap: { paddingTop: 24 },
-  djAvatarRing: { width: 56, height: 56, borderRadius: 28, padding: 2, alignItems: "center", justifyContent: "center" },
-  djAvatarInner: { width: 52, height: 52, borderRadius: 26, backgroundColor: "#1A0240", alignItems: "center", justifyContent: "center" },
-  djEmoji: { fontSize: 26 },
-  djInfo: { flex: 1, paddingTop: 22 },
-  djLabel: { fontSize: 11, fontFamily: "Inter_700Bold", color: "rgba(255,255,255,0.45)", letterSpacing: 2 },
-  djName: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.white, letterSpacing: 0.8, lineHeight: 24 },
-  eqRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
-  djGenre: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.82)", letterSpacing: 0.5 },
-  statsBlock: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    marginHorizontal: 16, marginBottom: 14,
-    backgroundColor: "rgba(8,6,23,0.58)", borderRadius: 13,
-    borderWidth: 1, borderColor: "rgba(53,22,73,0.6)",
-    paddingVertical: 12, paddingHorizontal: 24, gap: 0,
+  liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#fff" },
+  liveText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.8 },
+  avatarRing: { width: 44, height: 44, borderRadius: 22, padding: 2, alignItems: "center", justifyContent: "center", marginTop: 16 },
+  avatarInner: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#1A0240", alignItems: "center", justifyContent: "center" },
+  avatarEmoji: { fontSize: 20 },
+  djInfo: { flex: 1, marginTop: 16 },
+  djSubLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: "rgba(255,255,255,0.4)", letterSpacing: 2.5 },
+  djName: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.5, lineHeight: 20 },
+  genreRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 },
+  djGenre: { fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
+
+  // Stats (inside hero card)
+  statsRow: {
+    flexDirection: "row", alignItems: "center",
+    marginHorizontal: 12, marginBottom: 10,
+    backgroundColor: "rgba(8,6,23,0.5)", borderRadius: 10,
+    borderWidth: 1, borderColor: "rgba(53,22,73,0.5)",
+    paddingVertical: 7,
   },
-  statItem: { flex: 1, alignItems: "center", gap: 2 },
-  statDivider: { width: 1, height: 44, backgroundColor: "#2A1938" },
-  statValue: { fontSize: 18, fontFamily: "Inter_600SemiBold", color: C.white },
-  statLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: C.textSoft },
+  statItem: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
+  statDivider: { width: 1, height: 28, backgroundColor: "#2A1938" },
+  statValue: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  statLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: C.textSoft },
 
   // DJ picker
   djPicker: {
-    backgroundColor: "rgba(12,10,21,0.9)", borderRadius: 14, marginBottom: 12,
+    backgroundColor: "rgba(12,10,21,0.92)", borderRadius: 12, marginBottom: 8,
     borderWidth: 1, borderColor: C.darkPurpleBorder,
   },
-  djPickerRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 12 },
-  djPickerName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.white },
-  djPickerGenre: { fontSize: 11, fontFamily: "Inter_400Regular", color: C.textMuted },
-  livePillSmall: { backgroundColor: "#E91679", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7 },
-  liveTextSmall: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1 },
+  emptyPicker: { fontSize: 12, fontFamily: "Inter_400Regular", color: C.textMuted, textAlign: "center", paddingVertical: 10 },
+  djRow: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10 },
+  djRowName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  djRowGenre: { fontSize: 10, fontFamily: "Inter_400Regular", color: C.textMuted },
+  livePillSm: { backgroundColor: "#E91679", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  liveTxtSm: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1 },
 
-  // Tip section
+  // Labels
   sectionLabel: {
-    fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 5,
-    color: "rgba(190,184,204,0.82)", textAlign: "center",
-    marginBottom: 14, marginTop: 4,
+    fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 4,
+    color: "rgba(190,184,204,0.8)", textAlign: "center", marginBottom: 8,
   },
-  coinsRow: { flexDirection: "row", justifyContent: "center", gap: 6, marginBottom: 8 },
+
+  // Coins
+  coinsRow: { flexDirection: "row", justifyContent: "center", gap: 4, marginBottom: 4 },
 
   // Amount panel
   amountPanel: {
-    marginHorizontal: 2, marginBottom: 16, borderRadius: 14,
+    marginBottom: 8, borderRadius: 12,
     borderWidth: 1, borderColor: "rgba(52,32,68,0.7)",
     backgroundColor: "rgba(16,7,25,0.5)",
-    paddingVertical: 18, paddingHorizontal: 20, alignItems: "center",
+    paddingVertical: 10, alignItems: "center",
   },
   amountText: {
-    fontSize: 58, fontFamily: "Inter_700Bold",
-    color: C.neonPink,
-    textShadowColor: "rgba(255,27,141,0.6)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 18,
+    fontSize: 44, fontFamily: "Inter_700Bold", color: C.neonPink,
+    textShadowColor: "rgba(255,27,141,0.55)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14,
     letterSpacing: -1,
   },
 
-  // Info block
-  infoBlock: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 12, marginBottom: 14,
-  },
-  dollarCircle: {
-    width: 38, height: 38, borderRadius: 19,
-    borderWidth: 1.5, borderColor: C.neonPink,
-    alignItems: "center", justifyContent: "center",
-  },
-  dollarSign: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.neonPink },
-  infoTitle: { fontSize: 14, fontFamily: "Inter_500Medium", color: "#FFD3EC" },
-  infoSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.88)" },
+  // Info row
+  infoRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 8 },
+  dollarCircle: { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, borderColor: C.neonPink, alignItems: "center", justifyContent: "center" },
+  dollarSign: { fontSize: 14, fontFamily: "Inter_700Bold", color: C.neonPink },
+  infoTitle: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#FFD3EC" },
+  infoSub: { fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)" },
 
   // Message
-  messageWrap: { marginBottom: 14, position: "relative" },
-  messageInput: {
-    backgroundColor: "rgba(10,6,19,0.45)", borderRadius: 15,
+  msgWrap: { marginBottom: 8, position: "relative" },
+  msgInput: {
+    backgroundColor: "rgba(10,6,19,0.45)", borderRadius: 12,
     borderWidth: 1, borderColor: "rgba(49,32,62,0.8)",
-    paddingHorizontal: 16, paddingVertical: 14, paddingRight: 52,
-    fontSize: 14, fontFamily: "Inter_400Regular", color: C.white,
+    paddingHorizontal: 14, paddingVertical: 10, paddingRight: 50,
+    fontSize: 13, fontFamily: "Inter_400Regular", color: "#fff",
   },
   charCount: {
-    position: "absolute", right: 14, top: "50%",
-    fontSize: 11, fontFamily: "Inter_400Regular", color: C.textSoft,
-    transform: [{ translateY: -9 }],
+    position: "absolute", right: 12, top: "50%",
+    fontSize: 10, fontFamily: "Inter_400Regular", color: C.textSoft,
+    transform: [{ translateY: -8 }],
   },
-
   customInput: {
-    borderWidth: 1.5, borderRadius: 14, borderColor: "rgba(183,34,156,0.75)",
+    borderWidth: 1.5, borderRadius: 12, borderColor: "rgba(183,34,156,0.75)",
     backgroundColor: "rgba(10,6,19,0.45)",
-    paddingHorizontal: 16, paddingVertical: 12,
-    fontSize: 26, fontFamily: "Inter_700Bold", color: C.white, textAlign: "center",
-    marginBottom: 12,
+    paddingHorizontal: 14, paddingVertical: 8,
+    fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff", textAlign: "center", marginBottom: 8,
   },
 
   // Action buttons
-  actionRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
-
-  sideBtn: { width: 88 },
+  actionRow: { flexDirection: "row", gap: 7, marginBottom: 8 },
+  sideBtn: { width: 80 },
   sideBtnInner: {
-    borderWidth: 1, borderRadius: 14,
-    paddingVertical: 16, alignItems: "center", justifyContent: "center", gap: 5,
-    minHeight: 88,
+    borderWidth: 1, borderRadius: 12,
+    paddingVertical: 12, alignItems: "center", justifyContent: "center", gap: 4, minHeight: 70,
   },
-  sideBtnLabel: {
-    fontSize: 10, fontFamily: "Inter_700Bold",
-    color: C.white, letterSpacing: 0.8, textAlign: "center",
-  },
-
-  sendBtnWrap: { flex: 1 },
+  sideBtnLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.8, textAlign: "center" },
   sendBtn: {
-    borderRadius: 13, paddingVertical: 20, paddingHorizontal: 10,
-    alignItems: "center", justifyContent: "center", gap: 6, minHeight: 88,
+    borderRadius: 12, paddingVertical: 14, paddingHorizontal: 8,
+    alignItems: "center", justifyContent: "center", gap: 5, minHeight: 70,
   },
-  sendBtnLabel: {
-    fontSize: 13, fontFamily: "Inter_700Bold", color: C.white,
-    letterSpacing: 1.5, textAlign: "center",
-  },
+  sendBtnLabel: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1.2, textAlign: "center" },
 
-  // Banners
-  successBanner: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    padding: 14, borderRadius: 14, marginBottom: 10,
-    backgroundColor: "rgba(245,158,11,0.08)",
-    borderWidth: 1, borderColor: "rgba(245,158,11,0.3)",
-  },
-  successTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.white },
-  successSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#F59E0B", marginTop: 2 },
-
-  lowBalBar: {
+  // Toast / low bal
+  toast: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    padding: 12, borderRadius: 12,
-    backgroundColor: "rgba(245,158,11,0.06)",
-    borderWidth: 1, borderColor: "rgba(245,158,11,0.25)",
+    padding: 10, borderRadius: 10, marginBottom: 6,
+    backgroundColor: "rgba(245,158,11,0.08)", borderWidth: 1, borderColor: "rgba(245,158,11,0.25)",
   },
-  lowBalText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: "#F59E0B" },
+  toastText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: "#F59E0B" },
+  lowBal: {
+    flexDirection: "row", alignItems: "center", gap: 7,
+    padding: 10, borderRadius: 10,
+    backgroundColor: "rgba(245,158,11,0.05)", borderWidth: 1, borderColor: "rgba(245,158,11,0.2)",
+  },
+  lowBalText: { flex: 1, fontSize: 11, fontFamily: "Inter_500Medium", color: "#F59E0B" },
 });
