@@ -264,11 +264,11 @@ export default function FanScreen() {
         <ScrollView
           contentContainerStyle={[styles.scroll, {
             paddingTop: topPad + 6,
-            paddingBottom: Platform.OS === "web" ? 80 : insets.bottom + 80,
+            paddingBottom: Platform.OS === "web" ? 130 : insets.bottom + 100,
           }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          scrollEnabled={showDjPicker || showCustom}
+          scrollEnabled
         >
 
           {/* ── Wallet pill (top right) ── */}
