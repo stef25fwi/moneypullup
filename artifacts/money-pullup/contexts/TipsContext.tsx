@@ -7,12 +7,14 @@ import React, {
   useState,
 } from "react";
 
-export type TipStatus = "pending" | "accepted";
+export type TipStatus = "pending" | "accepted" | "rejected";
 
 export interface Tip {
   id: string;
   amount: number;
   fromName: string;
+  fromHandle: string;
+  fromAvatar: string;
   message: string;
   timestamp: Date;
   djId: string;
@@ -77,6 +79,7 @@ interface TipsContextType {
   addFunds: (amount: number) => void;
   sendTip: (djId: string, amount: number, message: string) => boolean;
   acceptTip: (tipId: string) => void;
+  rejectTip: (tipId: string) => void;
   setSelectedDj: (dj: DJ | null) => void;
   openStripeModal: () => void;
   closeStripeModal: () => void;
@@ -215,10 +218,15 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
     const dj = djs.find((d) => d.id === djId);
     if (!dj) return false;
 
+    const handles = ["@lea.music", "@tom_fan", "@sophie.rave", "@marco.dj", "@nina.sound", "@alex.beats"];
+    const avatars = ["🎤", "🎵", "🎧", "🔥", "⚡", "🌙"];
+    const idx = Math.floor(Math.random() * handles.length);
     const newTip: Tip = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       amount,
       fromName: fanProfile.name,
+      fromHandle: handles[idx],
+      fromAvatar: avatars[idx],
       message,
       timestamp: new Date(),
       djId,
@@ -248,6 +256,14 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
   const acceptTip = useCallback((tipId: string) => {
     setTips((prev) => {
       const updated = prev.map((t) => t.id === tipId ? { ...t, status: "accepted" as TipStatus } : t);
+      persist(STORAGE_KEY_TIPS, updated);
+      return updated;
+    });
+  }, [persist]);
+
+  const rejectTip = useCallback((tipId: string) => {
+    setTips((prev) => {
+      const updated = prev.map((t) => t.id === tipId ? { ...t, status: "rejected" as TipStatus } : t);
       persist(STORAGE_KEY_TIPS, updated);
       return updated;
     });
@@ -351,7 +367,7 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
     <TipsContext.Provider value={{
       wallet, tips, djs, selectedDj, isStripeModalVisible, isDJMode, currentDJName, fanProfile,
       djBankAccounts, djTransfers,
-      addFunds, sendTip, acceptTip, setSelectedDj,
+      addFunds, sendTip, acceptTip, rejectTip, setSelectedDj,
       openStripeModal: () => setIsStripeModalVisible(true),
       closeStripeModal: () => setIsStripeModalVisible(false),
       toggleDJMode: () => setIsDJMode((p) => !p),
