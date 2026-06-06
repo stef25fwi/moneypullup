@@ -11,19 +11,12 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-interface ChipConfig {
-  borderColor: string;
-  glowColor: string;
-  gradientTop: string;
-  gradientMid: string;
-  gradientBot: string;
-}
-
-const CHIP_CONFIGS: Record<number, ChipConfig> = {
-  5:  { borderColor: "#9D1A82", glowColor: "#CC22AA", gradientTop: "#E040CC", gradientMid: "#9D1A82", gradientBot: "#5A0048" },
-  10: { borderColor: "#FF1B8D", glowColor: "#FF1B8D", gradientTop: "#FF6DB5", gradientMid: "#FF1B8D", gradientBot: "#9A0054" },
-  15: { borderColor: "#0078C9", glowColor: "#00AAFF", gradientTop: "#44BBFF", gradientMid: "#0088DD", gradientBot: "#003E7A" },
-  20: { borderColor: "#8D2CFF", glowColor: "#AA55FF", gradientTop: "#CC88FF", gradientMid: "#8D2CFF", gradientBot: "#440099" },
+// Coin border colors matching reference image: dark glass, border-only style
+const COIN_BORDERS: Record<number, { border: string; glow: string }> = {
+  5:  { border: "rgba(200,200,220,0.22)", glow: "rgba(200,200,220,0.3)" },
+  10: { border: "#FF1B8D",               glow: "#FF1B8D" },
+  15: { border: "rgba(0,184,212,0.55)",  glow: "#00B8D4" },
+  20: { border: "rgba(141,44,255,0.55)", glow: "#8D2CFF" },
 };
 
 interface Props {
@@ -34,153 +27,153 @@ interface Props {
 }
 
 export function AmountChip3D({ amount, isSelected, onPress, size: sizeProp }: Props) {
-  const cfg = CHIP_CONFIGS[amount] ?? CHIP_CONFIGS[10];
+  const cfg = COIN_BORDERS[amount] ?? COIN_BORDERS[10];
 
   const scale = useSharedValue(1);
-  const glowRadius = useSharedValue(isSelected ? 22 : 10);
-  const glowOpacity = useSharedValue(isSelected ? 0.85 : 0.45);
+  // Pulsing glow for selected state
+  const ringOpacity = useSharedValue(isSelected ? 0.85 : 0);
+  const ringScale  = useSharedValue(isSelected ? 1 : 0.7);
 
   useEffect(() => {
     if (isSelected) {
-      glowRadius.value = withRepeat(
+      ringOpacity.value = withRepeat(
         withSequence(
-          withTiming(28, { duration: 1100, easing: Easing.inOut(Easing.sin) }),
-          withTiming(18, { duration: 1100, easing: Easing.inOut(Easing.sin) })
-        ),
-        -1,
-        false
-      );
-      glowOpacity.value = withRepeat(
-        withSequence(
-          withTiming(0.95, { duration: 1100 }),
-          withTiming(0.65, { duration: 1100 })
+          withTiming(1,    { duration: 1000, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0.6,  { duration: 1000, easing: Easing.inOut(Easing.sin) })
         ),
         -1,
         false
       );
     } else {
-      glowRadius.value = withTiming(10, { duration: 300 });
-      glowOpacity.value = withTiming(0.4, { duration: 300 });
+      ringOpacity.value = withTiming(0, { duration: 250 });
     }
   }, [isSelected]);
-
-  const outerStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    shadowRadius: glowRadius.value,
-    shadowOpacity: glowOpacity.value,
-  }));
 
   const handlePress = useCallback(() => {
     scale.value = withSequence(
       withSpring(0.88, { damping: 8 }),
-      withSpring(1.06, { damping: 8 }),
-      withSpring(1, { damping: 12 })
+      withSpring(1.05, { damping: 8 }),
+      withSpring(1,    { damping: 12 })
     );
     onPress(amount);
   }, [amount, onPress, scale]);
 
-  const base = sizeProp ?? 68;
-  const size = isSelected ? Math.round(base * 1.1) : base;
-  const radius = size / 2;
+  const base = sizeProp ?? 64;
+  const coinSize = isSelected ? Math.round(base * 1.14) : base;
+  const R = coinSize / 2;
+
+  // Outer glow ring animated style
+  const ringStyle = useAnimatedStyle(() => ({
+    opacity: ringOpacity.value,
+  }));
+  const coinAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
-    <Animated.View
-      style={[
-        outerRing(cfg.glowColor, isSelected ? 2.5 : 1.5),
-        outerStyle,
-        { width: size + 10, height: size + 10, borderRadius: (size + 10) / 2 },
-      ]}
-    >
-      <TouchableOpacity onPress={handlePress} activeOpacity={0.85} style={{ borderRadius: radius + 5 }}>
-        {/* Double ring outer */}
+    <Animated.View style={[{ alignItems: "center", justifyContent: "center" }, coinAnimStyle]}>
+      <TouchableOpacity onPress={handlePress} activeOpacity={0.85} style={{ alignItems: "center", justifyContent: "center" }}>
+
+        {/* ── Outer glow ring (selected only) ── */}
+        {isSelected && (
+          <Animated.View
+            style={[
+              styles.glowRing,
+              ringStyle,
+              {
+                width:  coinSize + 22,
+                height: coinSize + 22,
+                borderRadius: (coinSize + 22) / 2,
+                borderColor: cfg.glow,
+                shadowColor: cfg.glow,
+              },
+            ]}
+          />
+        )}
+
+        {/* ── Inner glow fill (selected only, subtle radial) ── */}
+        {isSelected && (
+          <View
+            style={[
+              styles.innerGlow,
+              {
+                width:  coinSize + 2,
+                height: coinSize + 2,
+                borderRadius: (coinSize + 2) / 2,
+                backgroundColor: `${cfg.glow}18`,
+              },
+            ]}
+          />
+        )}
+
+        {/* ── Coin body: dark glass ── */}
         <View
           style={[
-            styles.ringOuter,
+            styles.coin,
             {
-              width: size + 8,
-              height: size + 8,
-              borderRadius: (size + 8) / 2,
-              borderColor: cfg.borderColor,
+              width:  coinSize,
+              height: coinSize,
+              borderRadius: R,
+              borderColor: isSelected ? cfg.border : cfg.border,
               borderWidth: isSelected ? 2 : 1.2,
-              backgroundColor: "rgba(0,0,0,0.45)",
+              shadowColor:  isSelected ? cfg.glow : cfg.glow,
+              shadowOpacity: isSelected ? 0.85 : 0.3,
+              shadowRadius:  isSelected ? 14 : 5,
             },
           ]}
         >
-          {/* Inner ring */}
+          {/* Subtle inner shine at top */}
           <View
             style={[
-              styles.ringInner,
+              styles.shine,
+              { width: coinSize * 0.55, height: coinSize * 0.28, borderRadius: coinSize * 0.25 },
+            ]}
+          />
+
+          <Text
+            style={[
+              styles.label,
               {
-                width: size + 2,
-                height: size + 2,
-                borderRadius: (size + 2) / 2,
-                borderColor: cfg.borderColor + "55",
-                borderWidth: 0.8,
+                fontSize: isSelected ? Math.round(coinSize * 0.31) : Math.round(coinSize * 0.29),
+                fontFamily: isSelected ? "Inter_700Bold" : "Inter_400Regular",
+                color: "#FFFFFF",
               },
             ]}
           >
-            {/* Coin body */}
-            <LinearGradient
-              colors={[cfg.gradientTop, cfg.gradientMid, cfg.gradientBot]}
-              start={{ x: 0.25, y: 0 }}
-              end={{ x: 0.75, y: 1 }}
-              style={[styles.coin, { width: size, height: size, borderRadius: radius }]}
-            >
-              {/* Shine */}
-              <View style={[styles.shine, { width: size * 0.55, height: size * 0.35 }]} />
-              {/* Bottom shadow */}
-              <View style={[styles.bottomShadow, { width: size * 0.7, height: size * 0.25 }]} />
-
-              <Text style={[styles.label, isSelected && styles.labelSelected]}>
-                {amount}€
-              </Text>
-            </LinearGradient>
-          </View>
+            {amount}€
+          </Text>
         </View>
       </TouchableOpacity>
     </Animated.View>
   );
 }
 
-function outerRing(glowColor: string, borderWidth: number) {
-  return {
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    shadowColor: glowColor,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 12,
-  };
-}
-
 const styles = StyleSheet.create({
-  ringOuter: { alignItems: "center", justifyContent: "center" },
-  ringInner: { alignItems: "center", justifyContent: "center" },
-  coin: { alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  glowRing: {
+    position: "absolute",
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 18,
+    elevation: 10,
+  },
+  innerGlow: {
+    position: "absolute",
+  },
+  coin: {
+    backgroundColor: "rgba(10,8,20,0.88)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+    overflow: "hidden",
+  },
   shine: {
     position: "absolute",
-    top: 5,
-    left: "18%",
-    borderRadius: 30,
-    backgroundColor: "rgba(255,255,255,0.32)",
-  },
-  bottomShadow: {
-    position: "absolute",
-    bottom: 4,
-    left: "15%",
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.25)",
+    top: 4,
+    left: "20%",
+    backgroundColor: "rgba(255,255,255,0.07)",
   },
   label: {
-    fontSize: 20,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3,
     letterSpacing: -0.3,
-  },
-  labelSelected: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
   },
 });
