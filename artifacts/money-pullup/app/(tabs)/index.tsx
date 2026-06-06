@@ -2,6 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
+import Svg, { Defs, LinearGradient as SvgGrad, Stop, Text as SvgText } from "react-native-svg";
 import {
   Alert,
   Dimensions,
@@ -133,12 +134,35 @@ function DjHeroCard({ dj, onPress }: { dj: any; onPress: () => void }) {
   );
 }
 
-// ─── Amount display ───────────────────────────────────────────────────────────
+// ─── Amount display with SVG gradient text ────────────────────────────────────
 function AmountPanel({ amount }: { amount: number }) {
+  const label = amount > 0 ? `${amount} €` : "0 €";
+  const fontSize = 50;
+  const svgH = fontSize + 14;
   return (
     <View style={styles.amountPanelWrap}>
       <View style={styles.amountPanel}>
-        <Text style={styles.amountText}>{amount > 0 ? `${amount} €` : "0 €"}</Text>
+        <Svg width="100%" height={svgH} style={{ overflow: "visible" }}>
+          <Defs>
+            <SvgGrad id="tipGrad" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0"   stopColor="#FF9EDA" stopOpacity="1" />
+              <Stop offset="0.5" stopColor="#FF3FA0" stopOpacity="1" />
+              <Stop offset="1"   stopColor="#EF167F" stopOpacity="1" />
+            </SvgGrad>
+          </Defs>
+          <SvgText
+            fill="url(#tipGrad)"
+            fontSize={fontSize}
+            fontWeight="700"
+            fontFamily="Inter_700Bold"
+            x="50%"
+            y={svgH - 4}
+            textAnchor="middle"
+            letterSpacing="-1"
+          >
+            {label}
+          </SvgText>
+        </Svg>
       </View>
     </View>
   );
