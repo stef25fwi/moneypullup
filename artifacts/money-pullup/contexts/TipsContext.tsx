@@ -104,7 +104,7 @@ const INITIAL_DJS: DJ[] = [
   {
     id: "dj1",
     name: "DJ MASTER BEAT",
-    genre: "House / Techno",
+    genre: "House • Techno • Live Set",
     isLive: true,
     totalTipsToday: 0,
     avatar: "🎧",
@@ -148,6 +148,19 @@ const INITIAL_DJS: DJ[] = [
   },
 ];
 
+const DEMO_PENDING_TIP: Tip = {
+  id: "demo-tip-lea",
+  amount: 10,
+  fromName: "Léa",
+  fromHandle: "@lea.music",
+  fromAvatar: "👩‍🎤",
+  message: "Trop hâte d'entendre ce prochain banger ! 🔥",
+  timestamp: new Date(Date.now() - 4 * 60000),
+  djId: "dj1",
+  djName: "DJ MASTER BEAT",
+  status: "pending",
+};
+
 const STORAGE_KEY_WALLET = "@moneypullup/wallet";
 const STORAGE_KEY_TIPS = "@moneypullup/tips";
 const STORAGE_KEY_DJS = "@moneypullup/djs";
@@ -157,7 +170,7 @@ const STORAGE_KEY_TRANSFERS = "@moneypullup/transfers";
 
 export function TipsProvider({ children }: { children: React.ReactNode }) {
   const [wallet, setWallet] = useState<WalletState>({ balance: 0, currency: "EUR" });
-  const [tips, setTips] = useState<Tip[]>([]);
+  const [tips, setTips] = useState<Tip[]>([DEMO_PENDING_TIP]);
   const [djs, setDjs] = useState<DJ[]>(INITIAL_DJS);
   const [selectedDj, setSelectedDj] = useState<DJ | null>(INITIAL_DJS[0]);
   const [isStripeModalVisible, setIsStripeModalVisible] = useState(false);
