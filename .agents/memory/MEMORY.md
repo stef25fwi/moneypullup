@@ -1,0 +1,1 @@
+- [Expo web background image](expo-web-image.md) — expo-image / RN Image in absoluteFill GlowBackground crashes Expo web silently; use CSS backgroundImage on web + public/ folder.

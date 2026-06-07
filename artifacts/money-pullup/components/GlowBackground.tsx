@@ -1,7 +1,6 @@
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect } from "react";
-import { Dimensions, StyleSheet, View } from "react-native";
+import { Dimensions, Image, Platform, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -13,8 +12,12 @@ import Animated, {
 
 const { width: W, height: H } = Dimensions.get("window");
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const BG_SOURCE = require("../assets/images/bg_club.png");
+// Platform-specific image source: web uses public/ URI, native uses bundled asset
+const BG_SOURCE =
+  Platform.OS === "web"
+    ? { uri: "/bg_club.png" }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    : (require("../assets/images/bg_club.png") as number);
 
 const STARS = [
   { x: 0.06, y: 0.03, s: 1.5, o: 0.5,  d: 0,    dur: 3200 },
@@ -40,20 +43,18 @@ function Star({ x, y, s, o, d, dur }: typeof STARS[0]) {
       )
     );
   }, []);
-  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const anim = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
     <Animated.View
       style={[
         {
           position: "absolute",
-          left: x * W,
-          top: y * H,
-          width: s,
-          height: s,
+          left: x * W, top: y * H,
+          width: s, height: s,
           borderRadius: s / 2,
           backgroundColor: "#FFFFFF",
         },
-        style,
+        anim,
       ]}
     />
   );
@@ -61,23 +62,46 @@ function Star({ x, y, s, o, d, dur }: typeof STARS[0]) {
 
 export function GlowBackground() {
   return (
-    <View style={[StyleSheet.absoluteFill, { overflow: "hidden" }]} pointerEvents="none">
-
-      {/* ── Club photo base ── */}
-      <Image
-        source={BG_SOURCE}
+    <View
+      style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}
+      pointerEvents="none"
+    >
+      {/* ── Dark base (always visible, shown while image loads) ── */}
+      <LinearGradient
+        colors={["#040212", "#060418", "#0E051A", "#040212"]}
+        locations={[0, 0.3, 0.65, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        contentPosition="center"
       />
 
-      {/* ── Dark vignette overlay — keeps text readable ── */}
+      {/* ── Club photo — CSS backgroundImage on web, RN Image on native ── */}
+      {Platform.OS === "web" ? (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundImage: "url(/bg_club.png)",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            } as unknown as object,
+          ]}
+        />
+      ) : (
+        <Image
+          source={BG_SOURCE}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+      )}
+
+      {/* ── Vignette — keeps text readable over photo ── */}
       <LinearGradient
         colors={[
-          "rgba(4,2,18,0.70)",
-          "rgba(6,4,24,0.60)",
-          "rgba(8,4,22,0.65)",
-          "rgba(3,2,11,0.88)",
+          "rgba(4,2,18,0.55)",
+          "rgba(5,3,20,0.45)",
+          "rgba(6,3,18,0.52)",
+          "rgba(3,2,11,0.82)",
         ]}
         locations={[0, 0.3, 0.6, 1]}
         start={{ x: 0.5, y: 0 }}
@@ -85,9 +109,9 @@ export function GlowBackground() {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* ── Extra bottom darkening for action buttons ── */}
+      {/* ── Bottom darkening for action buttons ── */}
       <LinearGradient
-        colors={["transparent", "rgba(3,2,11,0.78)"]}
+        colors={["transparent", "rgba(3,2,11,0.72)"]}
         start={{ x: 0.5, y: 0.5 }}
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -95,24 +119,22 @@ export function GlowBackground() {
 
       {/* ── Magenta tint — left beam ── */}
       <LinearGradient
-        colors={["transparent", "rgba(196,20,130,0.16)", "transparent"]}
+        colors={["transparent", "rgba(196,20,130,0.18)", "transparent"]}
         start={{ x: 0, y: 1 }}
         end={{ x: 0.65, y: 0.25 }}
         style={{
-          position: "absolute",
-          bottom: 0, left: 0,
+          position: "absolute", bottom: 0, left: 0,
           width: W * 0.7, height: H * 0.55,
         }}
       />
 
       {/* ── Blue tint — right beam ── */}
       <LinearGradient
-        colors={["transparent", "rgba(20,80,220,0.13)", "transparent"]}
+        colors={["transparent", "rgba(20,80,220,0.15)", "transparent"]}
         start={{ x: 1, y: 1 }}
         end={{ x: 0.35, y: 0.25 }}
         style={{
-          position: "absolute",
-          bottom: 0, right: 0,
+          position: "absolute", bottom: 0, right: 0,
           width: W * 0.65, height: H * 0.5,
         }}
       />

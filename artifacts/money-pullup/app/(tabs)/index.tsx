@@ -68,10 +68,17 @@ function DjHeroCard({ dj, onPress }: { dj: any; onPress: () => void }) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.92} style={styles.heroCard}>
 
-      {/* ── Base dark card ── */}
+      {/* ── Glass base — transparent so background photo shows through ── */}
       <LinearGradient
-        colors={["#0D0520", "#060214", "#0A0318"]}
+        colors={["rgba(8,3,20,0.18)", "rgba(4,2,14,0.30)", "rgba(6,3,18,0.45)"]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* ── Bottom gradient for text readability ── */}
+      <LinearGradient
+        colors={["transparent", "rgba(3,2,12,0.72)"]}
+        start={{ x: 0.5, y: 0.3 }} end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
 
@@ -429,9 +436,9 @@ const styles = StyleSheet.create({
   // ── Hero card ──
   heroCard: {
     borderRadius: 20, overflow: "hidden", marginBottom: 14,
-    borderWidth: 1, borderColor: "rgba(40,20,60,0.6)",
+    borderWidth: 1, borderColor: "rgba(180,80,255,0.22)",
     minHeight: 200,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 14,
+    shadowColor: "#CC20AA", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 18, elevation: 14,
   },
   heroSpotRight: {
     position: "absolute", top: -40, right: -40,
