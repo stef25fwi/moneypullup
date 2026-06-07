@@ -144,7 +144,7 @@ function DjHeroCard({ dj, onPress }: { dj: any; onPress: () => void }) {
 // ─── Amount display with SVG gradient text ────────────────────────────────────
 function AmountPanel({ amount }: { amount: number }) {
   const label = amount > 0 ? `${amount} €` : "0 €";
-  const fontSize = 50;
+  const fontSize = 40;
   const svgH = fontSize + 14;
   return (
     <View style={styles.amountPanelWrap}>
@@ -267,16 +267,10 @@ export default function FanScreen() {
     <View style={styles.root}>
       <GlowBackground />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-        <ScrollView
-          contentContainerStyle={[styles.scroll, {
-            paddingTop: topPad + 6,
-            paddingBottom: Platform.OS === "web" ? 130 : insets.bottom + 100,
-          }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          scrollEnabled
-        >
+      <View style={[styles.inner, {
+        paddingTop: topPad + 4,
+        paddingBottom: insets.bottom + 10,
+      }]}>
 
           {/* ── Wallet pill (top right) ── */}
           <View style={styles.topRow}>
@@ -326,7 +320,7 @@ export default function FanScreen() {
                 key={amt}
                 amount={amt}
                 isSelected={!showCustom && selectedAmount === amt}
-                size={Math.round(W * 0.155)}
+                size={Math.round(W * 0.135)}
                 onPress={(a) => {
                   setSelectedAmount(a);
                   setShowCustom(false);
@@ -341,17 +335,6 @@ export default function FanScreen() {
 
           {/* ── Amount display ── */}
           <AmountPanel amount={effectiveAmount} />
-
-          {/* ── Money Pull-up info ── */}
-          <View style={styles.infoRow}>
-            <View style={styles.dollarCircle}>
-              <Text style={styles.dollarSign}>$</Text>
-            </View>
-            <View>
-              <Text style={styles.infoTitle}>Money Pull-up</Text>
-              <Text style={styles.infoSub}>Le soutien qui fait monter le son.</Text>
-            </View>
-          </View>
 
           {/* ── Message input ── */}
           <View style={styles.msgWrap}>
@@ -410,8 +393,7 @@ export default function FanScreen() {
             </TouchableOpacity>
           )}
 
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
 
       <StripeModal visible={isStripeModalVisible} onClose={closeStripeModal} />
     </View>
@@ -420,11 +402,11 @@ export default function FanScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: "#040212" },
-  scroll: { paddingHorizontal: 16 },
+  root:  { flex: 1, backgroundColor: "#040212" },
+  inner: { flex: 1, paddingHorizontal: 16 },
 
   // ── Top ──
-  topRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+  topRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   walletPill: {
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 13, paddingVertical: 8,
@@ -435,10 +417,10 @@ const styles = StyleSheet.create({
 
   // ── Hero card ──
   heroCard: {
-    borderRadius: 20, overflow: "hidden", marginBottom: 14,
+    borderRadius: 18, overflow: "hidden", marginBottom: 8,
     borderWidth: 1, borderColor: "rgba(180,80,255,0.22)",
-    minHeight: 200,
-    shadowColor: "#CC20AA", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 18, elevation: 14,
+    minHeight: 148,
+    shadowColor: "#CC20AA", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.32, shadowRadius: 14, elevation: 12,
   },
   heroSpotRight: {
     position: "absolute", top: -40, right: -40,
@@ -467,7 +449,7 @@ const styles = StyleSheet.create({
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: WHITE },
   liveText: { fontSize: 10, fontFamily: "Inter_700Bold", color: WHITE, letterSpacing: 0.8 },
   heroTopRight: { position: "absolute", top: 14, right: 14 },
-  heroBody: { paddingLeft: 16, paddingTop: 42, paddingBottom: 8, paddingRight: 80 },
+  heroBody: { paddingLeft: 16, paddingTop: 30, paddingBottom: 6, paddingRight: 80 },
   djSmallLabel: {
     fontSize: 13, fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.7)", letterSpacing: 1.5,
@@ -483,10 +465,10 @@ const styles = StyleSheet.create({
   // Stats bar inside hero
   statsBar: {
     flexDirection: "row", alignItems: "center",
-    marginHorizontal: 12, marginBottom: 12,
+    marginHorizontal: 12, marginBottom: 8,
     backgroundColor: "rgba(5,3,14,0.65)",
     borderRadius: 12, borderWidth: 1, borderColor: "rgba(45,26,64,0.8)",
-    paddingVertical: 8,
+    paddingVertical: 5,
   },
   statItem: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   statDivider: { width: 1, height: 28, backgroundColor: "rgba(45,26,64,0.9)" },
@@ -509,18 +491,18 @@ const styles = StyleSheet.create({
   sectionLbl: {
     fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 4,
     color: "rgba(190,184,204,0.75)", textAlign: "center",
-    marginBottom: 10, marginTop: 4,
+    marginBottom: 5, marginTop: 2,
   },
 
   // ── Coins ──
-  coinsRow: { flexDirection: "row", justifyContent: "space-evenly", alignItems: "center", marginBottom: 6 },
+  coinsRow: { flexDirection: "row", justifyContent: "space-evenly", alignItems: "center", marginBottom: 4 },
 
   // ── Amount panel ──
-  amountPanelWrap: { marginBottom: 10 },
+  amountPanelWrap: { marginBottom: 6 },
   amountPanel: {
     backgroundColor: "rgba(10,6,20,0.7)",
     borderRadius: 14, borderWidth: 1, borderColor: "rgba(40,24,58,0.85)",
-    paddingVertical: 12, paddingHorizontal: 24, alignItems: "center",
+    paddingVertical: 6, paddingHorizontal: 24, alignItems: "center",
   },
   amountText: {
     fontSize: 46, fontFamily: "Inter_700Bold",
@@ -543,7 +525,7 @@ const styles = StyleSheet.create({
   infoSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)" },
 
   // ── Message ──
-  msgWrap: { marginBottom: 10, position: "relative" },
+  msgWrap: { marginBottom: 6, position: "relative" },
   msgInput: {
     backgroundColor: "rgba(8,5,16,0.6)",
     borderRadius: 13, borderWidth: 1, borderColor: "rgba(40,24,56,0.9)",
@@ -564,16 +546,16 @@ const styles = StyleSheet.create({
   },
 
   // ── Action buttons ──
-  actionRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
+  actionRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
   sideBtn: { width: 80 },
   sideBtnInner: {
     borderWidth: 1, borderRadius: 14,
-    paddingVertical: 12, alignItems: "center", justifyContent: "center", gap: 4, minHeight: 72,
+    paddingVertical: 8, alignItems: "center", justifyContent: "center", gap: 3, minHeight: 58,
   },
   sideBtnTxt: { fontSize: 9, fontFamily: "Inter_700Bold", color: WHITE, letterSpacing: 0.7, textAlign: "center" },
   sendBtn: {
-    borderRadius: 14, paddingVertical: 16,
-    alignItems: "center", justifyContent: "center", gap: 5, minHeight: 72,
+    borderRadius: 14, paddingVertical: 10,
+    alignItems: "center", justifyContent: "center", gap: 4, minHeight: 58,
   },
   sendBtnTxt: { fontSize: 12, fontFamily: "Inter_700Bold", color: WHITE, letterSpacing: 1.5, textAlign: "center" },
 
