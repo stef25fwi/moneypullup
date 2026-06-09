@@ -394,7 +394,7 @@ const SOCIAL_CONFIG = {
   facebook: {
     label: "Facebook",
     icon: "facebook" as const,
-    gradient: ["#1877F2", "#0d5fd6", "#1877F2"] as [string, string, string],
+    gradient: ["#1877F2", "#0d5fd6"] as [string, string, string],
     fg: "#fff",
   },
 };
@@ -567,29 +567,4 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
   tipsList: { gap: 8 },
-  walletBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  walletBtnText: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  liveToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-
 });
