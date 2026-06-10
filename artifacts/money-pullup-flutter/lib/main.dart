@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'core/models/tip.dart';
 import 'core/state/tips_controller.dart';
 import 'features/dj/dj_dashboard_page.dart';
 
@@ -927,20 +926,23 @@ class ActionSideButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: borderColor, width: 1.2),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: iconColor, size: 25),
-              const SizedBox(height: 5),
-              Text(label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11.5,
-                      height: 1.15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.4)),
-            ],
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: iconColor, size: 25),
+                const SizedBox(height: 5),
+                Text(label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5,
+                        height: 1.15,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.4)),
+              ],
+            ),
           ),
         ),
       ),
@@ -1072,23 +1074,30 @@ class NavItem extends StatelessWidget {
       onTap: onTap,
       child: SizedBox(
         width: 86,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 4),
-            Text(label,
-                style: TextStyle(
-                    color: color, fontSize: 14, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 6),
-            Container(
-              width: 5,
-              height: 5,
-              decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: active ? kPink : Colors.transparent),
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 28),
+                const SizedBox(height: 4),
+                Text(label,
+                    style: TextStyle(
+                        color: color,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: active ? kPink : Colors.transparent),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
