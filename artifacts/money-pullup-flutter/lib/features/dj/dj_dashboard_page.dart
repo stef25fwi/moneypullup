@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/models/tip.dart';
 
 const Color kDjBg = Color(0xFF05020D);
 const Color kDjPink = Color(0xFFFF2E9F);
@@ -7,42 +8,20 @@ const Color kDjCyan = Color(0xFF00C8FF);
 const Color kDjGreyText = Color(0xFFB8B4C8);
 const Color kDjGreyMuted = Color(0xFF8A849D);
 
-enum DjTipStatus { pending, accepted, refused }
-
-class DjTip {
-  final String id;
-  final String fanName;
-  final int amount;
-  final String message;
-  final DjTipStatus status;
-
-  const DjTip({
-    required this.id,
-    required this.fanName,
-    required this.amount,
-    required this.message,
-    required this.status,
-  });
-
-  DjTip copyWith({DjTipStatus? status}) {
-    return DjTip(
-      id: id,
-      fanName: fanName,
-      amount: amount,
-      message: message,
-      status: status ?? this.status,
-    );
-  }
-}
-
 class DjDashboardPage extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onNavChanged;
+  final List<Tip> tips;
+  final ValueChanged<String> onAcceptTip;
+  final ValueChanged<String> onRejectTip;
 
   const DjDashboardPage({
     super.key,
     required this.currentIndex,
     required this.onNavChanged,
+    required this.tips,
+    required this.onAcceptTip,
+    required this.onRejectTip,
   });
 
   @override
@@ -50,48 +29,15 @@ class DjDashboardPage extends StatefulWidget {
 }
 
 class _DjDashboardPageState extends State<DjDashboardPage> {
-  final List<DjTip> tips = [
-    const DjTip(
-      id: 'tip_1',
-      fanName: 'Maya',
-      amount: 20,
-      message: 'Passe mon son, grosse vibe 🔥',
-      status: DjTipStatus.pending,
-    ),
-    const DjTip(
-      id: 'tip_2',
-      fanName: 'Alex',
-      amount: 15,
-      message: 'Pull up DJ !',
-      status: DjTipStatus.pending,
-    ),
-    const DjTip(
-      id: 'tip_3',
-      fanName: 'Chris',
-      amount: 10,
-      message: 'Le set est lourd',
-      status: DjTipStatus.accepted,
-    ),
-  ];
+  List<Tip> get pendingTips =>
+      widget.tips.where((tip) => tip.status == TipStatus.pending).toList();
 
-  List<DjTip> get pendingTips =>
-      tips.where((tip) => tip.status == DjTipStatus.pending).toList();
-
-  int get acceptedTotal => tips
-      .where((tip) => tip.status == DjTipStatus.accepted)
+  int get acceptedTotal => widget.tips
+      .where((tip) => tip.status == TipStatus.accepted)
       .fold(0, (total, tip) => total + tip.amount);
 
   int get pendingTotal =>
       pendingTips.fold(0, (total, tip) => total + tip.amount);
-
-  void updateTip(String id, DjTipStatus status) {
-    final index = tips.indexWhere((tip) => tip.id == id);
-    if (index == -1) return;
-
-    setState(() {
-      tips[index] = tips[index].copyWith(status: status);
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,18 +93,16 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
                                 onDismissed: (direction) {
                                   if (direction ==
                                       DismissDirection.startToEnd) {
-                                    updateTip(tip.id, DjTipStatus.accepted);
+                                    widget.onAcceptTip(tip.id);
                                   } else {
-                                    updateTip(tip.id, DjTipStatus.refused);
+                                    widget.onRejectTip(tip.id);
                                   }
                                 },
                                 child: DjTipCard(
                                   tip: tip,
                                   compact: compact,
-                                  onAccept: () =>
-                                      updateTip(tip.id, DjTipStatus.accepted),
-                                  onRefuse: () =>
-                                      updateTip(tip.id, DjTipStatus.refused),
+                                  onAccept: () => widget.onAcceptTip(tip.id),
+                                  onRefuse: () => widget.onRejectTip(tip.id),
                                 ),
                               );
                             },
@@ -435,7 +379,7 @@ class DjSectionTitle extends StatelessWidget {
 }
 
 class DjTipCard extends StatelessWidget {
-  final DjTip tip;
+  final Tip tip;
   final bool compact;
   final VoidCallback onAccept;
   final VoidCallback onRefuse;
