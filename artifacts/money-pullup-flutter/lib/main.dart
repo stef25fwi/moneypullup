@@ -90,15 +90,43 @@ class _FanPageState extends State<FanPage> {
 
   @override
   Widget build(BuildContext context) {
-    final h = MediaQuery.of(context).size.height;
-    final compact = h < 820;
+    final media = MediaQuery.of(context).size;
+    final h = media.height;
+    final w = media.width;
+    final veryCompact = h < 700;
+    final compact = h <= 860;
 
-    final heroHeight = compact ? 244.0 : 276.0;
-    final tipCircle = compact ? 68.0 : 76.0;
-    final amountBox = compact ? 84.0 : 102.0;
-    final actionHeight = compact ? 74.0 : 84.0;
-    final navHeight = compact ? 74.0 : 84.0;
-    final amountFont = compact ? 54.0 : 66.0;
+    final heroHeight = veryCompact
+        ? 160.0
+        : compact
+            ? 244.0
+            : 276.0;
+    final tipCircle = veryCompact
+        ? 56.0
+        : compact
+            ? 68.0
+            : 76.0;
+    final amountBox = veryCompact
+        ? 60.0
+        : compact
+            ? 84.0
+            : 102.0;
+    final actionHeight = veryCompact
+        ? 58.0
+        : compact
+            ? 74.0
+            : 84.0;
+    final navHeight = veryCompact
+        ? 62.0
+        : compact
+            ? 74.0
+            : 84.0;
+    final amountFont = veryCompact
+        ? 42.0
+        : compact
+            ? 54.0
+            : 66.0;
+    final sideButtonWidth = w < 420 ? 72.0 : 112.0;
 
     return Scaffold(
       body: Stack(
@@ -118,13 +146,31 @@ class _FanPageState extends State<FanPage> {
               child: GlowBlob(color: Color.fromRGBO(123, 44, 255, 0.24))),
           SafeArea(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(18, compact ? 4 : 6, 18, 8),
+              padding: EdgeInsets.fromLTRB(
+                  18,
+                  veryCompact
+                      ? 2
+                      : compact
+                          ? 4
+                          : 6,
+                  18,
+                  veryCompact ? 4 : 8),
               child: Column(
                 children: [
                   HeroDjCard(height: heroHeight),
-                  SizedBox(height: compact ? 10 : 14),
+                  SizedBox(
+                      height: veryCompact
+                          ? 6
+                          : compact
+                              ? 10
+                              : 14),
                   const SectionTitle('CHOISISSEZ VOTRE TIP'),
-                  SizedBox(height: compact ? 10 : 14),
+                  SizedBox(
+                      height: veryCompact
+                          ? 6
+                          : compact
+                              ? 10
+                              : 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [5, 10, 15, 20].map((tip) {
@@ -143,23 +189,39 @@ class _FanPageState extends State<FanPage> {
                       );
                     }).toList(),
                   ),
-                  SizedBox(height: compact ? 12 : 16),
+                  SizedBox(
+                      height: veryCompact
+                          ? 6
+                          : compact
+                              ? 12
+                              : 16),
                   const SectionTitle('VOTRE TIP'),
                   const SizedBox(height: 9),
                   AmountBox(
                       height: amountBox,
                       amount: selectedTip,
                       fontSize: amountFont),
-                  SizedBox(height: compact ? 8 : 12),
+                  SizedBox(
+                      height: veryCompact
+                          ? 4
+                          : compact
+                              ? 8
+                              : 12),
                   const MoneyPullUpInfo(),
                   const SizedBox(height: 12),
                   MessageInput(controller: messageController),
-                  SizedBox(height: compact ? 10 : 14),
+                  SizedBox(
+                      height: veryCompact
+                          ? 6
+                          : compact
+                              ? 10
+                              : 14),
                   SizedBox(
                     height: actionHeight,
                     child: Row(
                       children: [
                         ActionSideButton(
+                          width: sideButtonWidth,
                           borderColor: const Color(0xFFD946EF),
                           icon: Icons.grid_view_rounded,
                           iconColor: const Color(0xFFFF7DCE),
@@ -173,6 +235,7 @@ class _FanPageState extends State<FanPage> {
                                     debugPrint('TODO send tip $selectedTip'))),
                         const SizedBox(width: 14),
                         ActionSideButton(
+                          width: sideButtonWidth,
                           borderColor: kCyan,
                           icon: Icons.account_balance_wallet_outlined,
                           iconColor: kCyan,
@@ -182,7 +245,12 @@ class _FanPageState extends State<FanPage> {
                       ],
                     ),
                   ),
-                  SizedBox(height: compact ? 10 : 14),
+                  SizedBox(
+                      height: veryCompact
+                          ? 6
+                          : compact
+                              ? 10
+                              : 14),
                   CustomBottomNav(
                     height: navHeight,
                     currentIndex: widget.currentIndex,
@@ -384,37 +452,47 @@ class StatItem extends StatelessWidget {
   final String value;
   final String label;
 
-  const StatItem(
-      {super.key,
-      required this.icon,
-      required this.value,
-      required this.label});
+  const StatItem({
+    super.key,
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: kPink, size: 22),
-        const SizedBox(width: 9),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(value,
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: kPink, size: 19),
+          const SizedBox(width: 5),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
                 style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800)),
-            Text(label,
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                label,
                 style: const TextStyle(
-                    color: kGreyText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    height: 0.95)),
-          ],
-        ),
-      ],
+                  color: kGreyText,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  height: 0.95,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -535,40 +613,61 @@ class MoneyPullUpInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       height: 44,
+      width: double.infinity,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 40,
+            height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: kPink, width: 2),
               boxShadow: [
-                BoxShadow(color: kPink.withValues(alpha: 0.45), blurRadius: 12)
+                BoxShadow(
+                  color: kPink.withValues(alpha: 0.35),
+                  blurRadius: 10,
+                ),
               ],
             ),
-            child: const Text(r'$',
-                style: TextStyle(
-                    color: kPink, fontSize: 22, fontWeight: FontWeight.w800)),
+            child: const Text(
+              r'$',
+              style: TextStyle(
+                color: kPink,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
-          const SizedBox(width: 12),
-          const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Money Pull-up',
+          const SizedBox(width: 10),
+          Flexible(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Money Pull-up',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      color: Color(0xFFFFD3EA),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800)),
-              Text('Le soutien qui fait monter le son.',
+                    color: Color(0xFFFFD3EA),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  'Le soutien qui fait monter le son.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      color: Color.fromRGBO(255, 255, 255, 0.88),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600)),
-            ],
+                    color: Color.fromRGBO(255, 255, 255, 0.88),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -643,6 +742,7 @@ class _MessageInputState extends State<MessageInput> {
 }
 
 class ActionSideButton extends StatelessWidget {
+  final double width;
   final Color borderColor;
   final IconData icon;
   final Color iconColor;
@@ -651,6 +751,7 @@ class ActionSideButton extends StatelessWidget {
 
   const ActionSideButton({
     super.key,
+    required this.width,
     required this.borderColor,
     required this.icon,
     required this.iconColor,
@@ -661,7 +762,7 @@ class ActionSideButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 112,
+      width: width,
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -694,6 +795,7 @@ class ActionSideButton extends StatelessWidget {
 
 class MainTipButton extends StatelessWidget {
   final VoidCallback onTap;
+
   const MainTipButton({super.key, required this.onTap});
 
   @override
@@ -705,29 +807,43 @@ class MainTipButton extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: kPink.withValues(alpha: 0.55), blurRadius: 20)
+            BoxShadow(
+              color: kPink.withValues(alpha: 0.45),
+              blurRadius: 16,
+            ),
           ],
         ),
         child: const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-                colors: [kPink, kHotPink],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight),
+              colors: [kPink, kHotPink],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
           child: Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.flash_on, color: Colors.white, size: 22),
-                SizedBox(width: 9),
-                Text('ENVOYER LE TIP',
-                    style: TextStyle(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 6),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.flash_on, color: Colors.white, size: 20),
+                    SizedBox(width: 6),
+                    Text(
+                      'ENVOYER LE TIP',
+                      maxLines: 1,
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 13,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 0.2)),
-              ],
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

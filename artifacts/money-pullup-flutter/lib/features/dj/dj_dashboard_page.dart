@@ -4,7 +4,6 @@ const Color kDjBg = Color(0xFF05020D);
 const Color kDjPink = Color(0xFFFF2E9F);
 const Color kDjHotPink = Color(0xFFFF147F);
 const Color kDjCyan = Color(0xFF00C8FF);
-const Color kDjPurple = Color(0xFF7B2CFF);
 const Color kDjGreyText = Color(0xFFB8B4C8);
 const Color kDjGreyMuted = Color(0xFF8A849D);
 
@@ -51,33 +50,26 @@ class DjDashboardPage extends StatefulWidget {
 }
 
 class _DjDashboardPageState extends State<DjDashboardPage> {
-  final List<DjTip> tips = const [
-    DjTip(
+  final List<DjTip> tips = [
+    const DjTip(
       id: 'tip_1',
       fanName: 'Maya',
       amount: 20,
       message: 'Passe mon son, grosse vibe 🔥',
       status: DjTipStatus.pending,
     ),
-    DjTip(
+    const DjTip(
       id: 'tip_2',
       fanName: 'Alex',
       amount: 15,
       message: 'Pull up DJ !',
       status: DjTipStatus.pending,
     ),
-    DjTip(
+    const DjTip(
       id: 'tip_3',
       fanName: 'Chris',
       amount: 10,
       message: 'Le set est lourd',
-      status: DjTipStatus.accepted,
-    ),
-    DjTip(
-      id: 'tip_4',
-      fanName: 'Nina',
-      amount: 5,
-      message: 'Encore une vibe comme ça',
       status: DjTipStatus.accepted,
     ),
   ];
@@ -103,7 +95,8 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.of(context).size.height < 820;
+    final h = MediaQuery.of(context).size.height;
+    final compact = h <= 860;
 
     return Scaffold(
       backgroundColor: kDjBg,
@@ -111,18 +104,18 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
         children: [
           const Positioned.fill(child: DjNeonBackground()),
           const Positioned(
-            left: -120,
-            bottom: 20,
-            child: DjGlowBlob(color: Color.fromRGBO(255, 46, 159, 0.34)),
+            left: -140,
+            bottom: 40,
+            child: DjGlowBlob(color: Color.fromRGBO(255, 46, 159, 0.30)),
           ),
           const Positioned(
-            right: -130,
-            top: 80,
-            child: DjGlowBlob(color: Color.fromRGBO(0, 200, 255, 0.24)),
+            right: -150,
+            top: 70,
+            child: DjGlowBlob(color: Color.fromRGBO(0, 200, 255, 0.22)),
           ),
           SafeArea(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(18, compact ? 8 : 14, 18, 8),
+              padding: EdgeInsets.fromLTRB(18, compact ? 6 : 14, 18, 8),
               child: Column(
                 children: [
                   DjHeaderCard(
@@ -130,9 +123,9 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
                     pendingTotal: pendingTotal,
                     pendingCount: pendingTips.length,
                   ),
-                  SizedBox(height: compact ? 12 : 16),
+                  SizedBox(height: compact ? 8 : 14),
                   const DjSectionTitle('TIPS EN ATTENTE'),
-                  SizedBox(height: compact ? 10 : 14),
+                  SizedBox(height: compact ? 8 : 12),
                   Expanded(
                     child: pendingTips.isEmpty
                         ? const EmptyTipsCard()
@@ -141,9 +134,10 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
                             physics: const BouncingScrollPhysics(),
                             itemCount: pendingTips.length,
                             separatorBuilder: (_, __) =>
-                                const SizedBox(height: 12),
+                                SizedBox(height: compact ? 8 : 12),
                             itemBuilder: (context, index) {
                               final tip = pendingTips[index];
+
                               return Dismissible(
                                 key: ValueKey(tip.id),
                                 direction: DismissDirection.horizontal,
@@ -160,6 +154,7 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
                                 },
                                 child: DjTipCard(
                                   tip: tip,
+                                  compact: compact,
                                   onAccept: () =>
                                       updateTip(tip.id, DjTipStatus.accepted),
                                   onRefuse: () =>
@@ -169,9 +164,9 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
                             },
                           ),
                   ),
-                  SizedBox(height: compact ? 10 : 14),
+                  SizedBox(height: compact ? 8 : 12),
                   DjBottomNav(
-                    height: compact ? 74 : 84,
+                    height: compact ? 64 : 78,
                     currentIndex: widget.currentIndex,
                     onChanged: widget.onNavChanged,
                   ),
@@ -239,10 +234,12 @@ class DjHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.of(context).size.width < 420;
+
     return Container(
-      height: 210,
+      height: compact ? 190 : 210,
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(compact ? 14 : 18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
@@ -257,8 +254,8 @@ class DjHeaderCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: kDjPink.withValues(alpha: 0.24),
-            blurRadius: 28,
+            color: kDjPink.withValues(alpha: 0.20),
+            blurRadius: 22,
           ),
         ],
       ),
@@ -267,19 +264,26 @@ class DjHeaderCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
-                'DJ DASHBOARD',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
+              const Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'DJ DASHBOARD',
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Container(
-                height: 30,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                height: 26,
+                padding: const EdgeInsets.symmetric(horizontal: 9),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: kDjHotPink,
@@ -289,31 +293,35 @@ class DjHeaderCard extends StatelessWidget {
                   '● LIVE',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: 10,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           const Text(
             'Tips reçus',
             style: TextStyle(
               color: kDjGreyText,
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
-              letterSpacing: 1.4,
+              letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '$acceptedTotal €',
-            style: const TextStyle(
-              color: kDjPink,
-              fontSize: 54,
-              height: 1,
-              fontWeight: FontWeight.w900,
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '$acceptedTotal €',
+              style: const TextStyle(
+                color: kDjPink,
+                fontSize: 44,
+                height: 1,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
           const Spacer(),
@@ -327,7 +335,7 @@ class DjHeaderCard extends StatelessWidget {
                   color: kDjPink,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: DjMiniStat(
                   label: 'À valider',
@@ -361,40 +369,47 @@ class DjMiniStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 7),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.045),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 9),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 5),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: kDjGreyText,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                Text(
+                  label,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: kDjGreyText,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -413,7 +428,7 @@ class DjSectionTitle extends StatelessWidget {
         color: kDjGreyText,
         fontSize: 12,
         fontWeight: FontWeight.w900,
-        letterSpacing: 2.2,
+        letterSpacing: 2.0,
       ),
     );
   }
@@ -421,12 +436,14 @@ class DjSectionTitle extends StatelessWidget {
 
 class DjTipCard extends StatelessWidget {
   final DjTip tip;
+  final bool compact;
   final VoidCallback onAccept;
   final VoidCallback onRefuse;
 
   const DjTipCard({
     super.key,
     required this.tip,
+    required this.compact,
     required this.onAccept,
     required this.onRefuse,
   });
@@ -434,8 +451,8 @@ class DjTipCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 146,
-      padding: const EdgeInsets.all(16),
+      height: compact ? 126 : 146,
+      padding: EdgeInsets.all(compact ? 12 : 16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.045),
         borderRadius: BorderRadius.circular(22),
@@ -446,8 +463,8 @@ class DjTipCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: compact ? 42 : 48,
+                height: compact ? 42 : 48,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -456,45 +473,47 @@ class DjTipCard extends StatelessWidget {
                 ),
                 child: Text(
                   tip.fanName.substring(0, 1).toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: kDjPink,
-                    fontSize: 22,
+                    fontSize: compact ? 19 : 22,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   tip.fanName,
-                  style: const TextStyle(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: compact ? 16 : 18,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
               Text(
                 '${tip.amount} €',
-                style: const TextStyle(
+                style: TextStyle(
                   color: kDjPink,
-                  fontSize: 28,
+                  fontSize: compact ? 24 : 28,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Expanded(
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 tip.message,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: kDjGreyText,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -510,7 +529,7 @@ class DjTipCard extends StatelessWidget {
                   onTap: onRefuse,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: DjDecisionButton(
                   label: 'ACCEPTER',
@@ -546,27 +565,30 @@ class DjDecisionButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 36,
+        height: 32,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.13),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: color.withValues(alpha: 0.55)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 17),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -599,11 +621,14 @@ class SwipeRefuseBackground extends StatelessWidget {
       alignment: Alignment.centerRight,
       padding: const EdgeInsets.only(right: 24),
       decoration: BoxDecoration(
-        color: Color(0xFFFF4B6E).withValues(alpha: 0.22),
+        color: const Color(0xFFFF4B6E).withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(22),
       ),
-      child:
-          const Icon(Icons.close_rounded, color: Color(0xFFFF4B6E), size: 34),
+      child: const Icon(
+        Icons.close_rounded,
+        color: Color(0xFFFF4B6E),
+        size: 34,
+      ),
     );
   }
 }
@@ -615,7 +640,7 @@ class EmptyTipsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Container(
-        height: 150,
+        height: 130,
         width: double.infinity,
         alignment: Alignment.center,
         decoration: BoxDecoration(
@@ -709,23 +734,14 @@ class DjNavItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 4),
+            Icon(icon, color: color, size: 25),
+            const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
                 color: color,
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              width: 5,
-              height: 5,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: active ? kDjPink : Colors.transparent,
               ),
             ),
           ],
