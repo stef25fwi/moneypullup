@@ -8,6 +8,7 @@ class TipsController extends ChangeNotifier {
     Tip(
       id: 'demo_lea',
       fanName: 'Léa',
+      fanHandle: '@lea.music',
       amount: 10,
       message: "Trop hâte d'entendre ce prochain banger ! 🔥",
       createdAt: DateTime.now(),
@@ -37,6 +38,7 @@ class TipsController extends ChangeNotifier {
       Tip(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         fanName: 'Fan',
+        fanHandle: '@fan.live',
         amount: amount,
         message: message,
         createdAt: DateTime.now(),

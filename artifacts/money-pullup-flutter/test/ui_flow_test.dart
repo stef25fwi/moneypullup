@@ -58,8 +58,14 @@ void main() {
     await tester.tap(find.text('DJ').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('DJ DASHBOARD'), findsWidgets);
     expect(find.text('TIPS EN ATTENTE'), findsWidgets);
+    expect(find.text('Dashboard'), findsOneWidget);
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, -400));
+    await tester.pumpAndSettle();
+
+    expect(find.text('MESSAGE AUTOMATIQUE'), findsOneWidget);
+    expect(find.text("APERÇU AUJOURD'HUI"), findsOneWidget);
   });
 
   testWidgets('Flow UI bottom navigation to Profil works',

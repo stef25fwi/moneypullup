@@ -5,6 +5,9 @@ const Color kDjBg = Color(0xFF05020D);
 const Color kDjPink = Color(0xFFFF2E9F);
 const Color kDjHotPink = Color(0xFFFF147F);
 const Color kDjCyan = Color(0xFF00C8FF);
+const Color kDjPurple = Color(0xFF7B2CFF);
+const Color kDjRed = Color(0xFFFF4B6E);
+const Color kDjGreen = Color(0xFF22C55E);
 const Color kDjGreyText = Color(0xFFB8B4C8);
 const Color kDjGreyMuted = Color(0xFF8A849D);
 
@@ -29,20 +32,79 @@ class DjDashboardPage extends StatefulWidget {
 }
 
 class _DjDashboardPageState extends State<DjDashboardPage> {
+  bool autoMessageEnabled = true;
+  String autoMessage = 'Merci pour ton tip !\nJe te dédie le prochain son 🔥';
+
   List<Tip> get pendingTips =>
       widget.tips.where((tip) => tip.status == TipStatus.pending).toList();
 
-  int get acceptedTotal => widget.tips
-      .where((tip) => tip.status == TipStatus.accepted)
-      .fold(0, (total, tip) => total + tip.amount);
+  void _acceptTip(Tip tip) {
+    widget.onAcceptTip(tip.id);
+    if (!autoMessageEnabled) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'Message envoyé à ${tip.fanName} : ${autoMessage.replaceAll('\n', ' ')}'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: kDjPink,
+      ),
+    );
+  }
 
-  int get pendingTotal =>
-      pendingTips.fold(0, (total, tip) => total + tip.amount);
+  void _rejectTip(Tip tip) {
+    widget.onRejectTip(tip.id);
+  }
+
+  void _editAutoMessage() {
+    final ctrl = TextEditingController(text: autoMessage);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF10081E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Message automatique',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        content: TextField(
+          controller: ctrl,
+          maxLines: 3,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          decoration: const InputDecoration(
+            hintText: 'Votre message...',
+            hintStyle: TextStyle(color: Color(0xFFA9A3BA)),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: kDjPurple),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: kDjPink),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler',
+                style: TextStyle(color: Color(0xFFA9A3BA))),
+          ),
+          TextButton(
+            onPressed: () {
+              final text = ctrl.text.trim();
+              if (text.isNotEmpty) {
+                setState(() => autoMessage = text);
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Enregistrer',
+                style: TextStyle(color: kDjPink, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final h = MediaQuery.of(context).size.height;
-    final compact = h <= 860;
+    final pending = pendingTips;
 
     return Scaffold(
       backgroundColor: kDjBg,
@@ -59,64 +121,72 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
             top: 70,
             child: DjGlowBlob(color: Color.fromRGBO(0, 200, 255, 0.22)),
           ),
-          SafeArea(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(18, compact ? 6 : 14, 18, 8),
-              child: Column(
-                children: [
-                  DjHeaderCard(
-                    acceptedTotal: acceptedTotal,
-                    pendingTotal: pendingTotal,
-                    pendingCount: pendingTips.length,
-                  ),
-                  SizedBox(height: compact ? 8 : 14),
-                  const DjSectionTitle('TIPS EN ATTENTE'),
-                  SizedBox(height: compact ? 8 : 12),
-                  Expanded(
-                    child: pendingTips.isEmpty
-                        ? const EmptyTipsCard()
-                        : ListView.separated(
-                            padding: EdgeInsets.zero,
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: pendingTips.length,
-                            separatorBuilder: (_, __) =>
-                                SizedBox(height: compact ? 8 : 12),
-                            itemBuilder: (context, index) {
-                              final tip = pendingTips[index];
-
-                              return Dismissible(
-                                key: ValueKey(tip.id),
-                                direction: DismissDirection.horizontal,
-                                background: const SwipeAcceptBackground(),
-                                secondaryBackground:
-                                    const SwipeRefuseBackground(),
-                                onDismissed: (direction) {
-                                  if (direction ==
-                                      DismissDirection.startToEnd) {
-                                    widget.onAcceptTip(tip.id);
-                                  } else {
-                                    widget.onRejectTip(tip.id);
-                                  }
-                                },
-                                child: DjTipCard(
-                                  tip: tip,
-                                  compact: compact,
-                                  onAccept: () => widget.onAcceptTip(tip.id),
-                                  onRefuse: () => widget.onRejectTip(tip.id),
-                                ),
-                              );
-                            },
+          Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  physics: const BouncingScrollPhysics(),
+                  children: [
+                    DjHeroWithStats(pendingCount: pending.length),
+                    const SizedBox(height: 20),
+                    DjPendingHeader(count: pending.length),
+                    const SizedBox(height: 12),
+                    if (pending.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 18),
+                        child: EmptyTipsCard(),
+                      )
+                    else ...[
+                      for (final tip in pending)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+                          child: PendingTipRow(
+                            tip: tip,
+                            onAccept: () => _acceptTip(tip),
+                            onRefuse: () => _rejectTip(tip),
                           ),
-                  ),
-                  SizedBox(height: compact ? 8 : 12),
-                  DjBottomNav(
-                    height: compact ? 64 : 78,
+                        ),
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(18, 2, 18, 0),
+                        child: SwipeHintRow(),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: AutoMessageCard(
+                        enabled: autoMessageEnabled,
+                        message: autoMessage,
+                        onToggle: (v) =>
+                            setState(() => autoMessageEnabled = v),
+                        onEdit: _editAutoMessage,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18),
+                      child: DjSectionTitle("APERÇU AUJOURD'HUI"),
+                    ),
+                    const SizedBox(height: 12),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18),
+                      child: DjOverviewRow(),
+                    ),
+                  ],
+                ),
+              ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
+                  child: DjBottomNav(
                     currentIndex: widget.currentIndex,
                     onChanged: widget.onNavChanged,
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -164,131 +234,39 @@ class DjGlowBlob extends StatelessWidget {
   }
 }
 
-class DjHeaderCard extends StatelessWidget {
-  final int acceptedTotal;
-  final int pendingTotal;
+class DjHeroWithStats extends StatelessWidget {
   final int pendingCount;
 
-  const DjHeaderCard({
-    super.key,
-    required this.acceptedTotal,
-    required this.pendingTotal,
-    required this.pendingCount,
-  });
+  const DjHeroWithStats({super.key, required this.pendingCount});
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.of(context).size.width < 420;
+    final topInset = MediaQuery.of(context).padding.top;
+    final compact = MediaQuery.of(context).size.height <= 860;
+    final heroHeight = (compact ? 280.0 : 320.0) + topInset;
+    const statsHeight = 92.0;
+    const overlap = 38.0;
 
-    return Container(
-      height: compact ? 190 : 210,
-      width: double.infinity,
-      padding: EdgeInsets.all(compact ? 14 : 18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.fromRGBO(255, 46, 159, 0.18),
-            Color.fromRGBO(123, 44, 255, 0.12),
-            Color.fromRGBO(0, 200, 255, 0.10),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: kDjPink.withValues(alpha: 0.20),
-            blurRadius: 22,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return SizedBox(
+      height: heroHeight + statsHeight - overlap,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'DJ DASHBOARD',
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                height: 26,
-                padding: const EdgeInsets.symmetric(horizontal: 9),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: kDjHotPink,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  '● LIVE',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: heroHeight,
+            child: DjHeroHeader(
+                heroHeight: heroHeight,
+                topInset: topInset,
+                walletLabel: '1 245,80 €'),
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Tips reçus',
-            style: TextStyle(
-              color: kDjGreyText,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '$acceptedTotal €',
-              style: const TextStyle(
-                color: kDjPink,
-                fontSize: 44,
-                height: 1,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              Expanded(
-                child: DjMiniStat(
-                  label: 'En attente',
-                  value: '$pendingCount',
-                  icon: Icons.notifications_active_outlined,
-                  color: kDjPink,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: DjMiniStat(
-                  label: 'À valider',
-                  value: '$pendingTotal €',
-                  icon: Icons.account_balance_wallet_outlined,
-                  color: kDjCyan,
-                ),
-              ),
-            ],
+          Positioned(
+            left: 18,
+            right: 18,
+            bottom: 0,
+            height: statsHeight,
+            child: DjStatsBar(pendingCount: pendingCount),
           ),
         ],
       ),
@@ -296,64 +274,343 @@ class DjHeaderCard extends StatelessWidget {
   }
 }
 
-class DjMiniStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
+class DjHeroHeader extends StatelessWidget {
+  final double heroHeight;
+  final double topInset;
+  final String walletLabel;
 
-  const DjMiniStat({
+  const DjHeroHeader({
     super.key,
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
+    required this.heroHeight,
+    required this.topInset,
+    required this.walletLabel,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.045),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-      ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 5),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+    return SizedBox(
+      height: heroHeight,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/bg_club.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [0.0, 0.45, 0.8, 1.0],
+                colors: [
+                  Color.fromRGBO(5, 2, 13, 0.10),
+                  Color.fromRGBO(5, 2, 13, 0.25),
+                  Color.fromRGBO(5, 2, 13, 0.85),
+                  Color(0xFF05020D),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: topInset + 10,
+            left: 18,
+            child: Container(
+              height: 30,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: kDjHotPink,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Text(
+                '● LIVE',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: topInset + 6,
+            right: 18,
+            child: Container(
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: const Color.fromRGBO(20, 10, 35, 0.68),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: kDjPink.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.account_balance_wallet_outlined,
+                      color: kDjPink, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    walletLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Positioned(
+            left: 22,
+            bottom: 64,
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  value,
-                  maxLines: 1,
-                  style: const TextStyle(
+                  'DJ',
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 28,
+                    height: 1.05,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
+                Text(
+                  'MASTER BEAT',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    height: 1.08,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.graphic_eq, color: kDjPink, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'House • Techno • Live Set',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DjStatsBar extends StatelessWidget {
+  final int pendingCount;
+
+  const DjStatsBar({super.key, required this.pendingCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color.fromRGBO(13, 8, 26, 0.92),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: DjStatCell(
+              icon: Icons.card_giftcard,
+              iconColor: kDjPink,
+              label: 'Tips reçus',
+              value: '128',
+              valueColor: Colors.white,
+              sub: "aujourd'hui",
+            ),
+          ),
+          const DjStatDivider(),
+          Expanded(
+            child: DjStatCell(
+              icon: Icons.schedule,
+              iconColor: kDjPink,
+              label: 'En attente',
+              value: '$pendingCount',
+              valueColor: kDjPink,
+            ),
+          ),
+          const DjStatDivider(),
+          const Expanded(
+            child: DjStatCell(
+              icon: Icons.check_circle_outline,
+              iconColor: kDjCyan,
+              label: 'Acceptés',
+              value: '116',
+              valueColor: Colors.white,
+            ),
+          ),
+          const DjStatDivider(),
+          const Expanded(
+            child: DjStatCell(
+              icon: Icons.account_balance_wallet_outlined,
+              iconColor: kDjPink,
+              label: 'Solde wallet',
+              value: '1 245,80 €',
+              valueColor: Colors.white,
+              valueSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DjStatCell extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final Color valueColor;
+  final double valueSize;
+  final String? sub;
+
+  const DjStatCell({
+    super.key,
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    required this.valueColor,
+    this.valueSize = 20,
+    this.sub,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 9),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: iconColor, size: 13),
+                const SizedBox(width: 4),
                 Text(
                   label,
                   maxLines: 1,
                   style: const TextStyle(
                     color: kDjGreyText,
                     fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    height: 1,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: TextStyle(
+                color: valueColor,
+                fontSize: valueSize,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          if (sub != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              sub!,
+              maxLines: 1,
+              style: const TextStyle(
+                color: kDjGreyMuted,
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
-        ),
+        ],
+      ),
+    );
+  }
+}
+
+class DjStatDivider extends StatelessWidget {
+  const DjStatDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      color: Colors.white.withValues(alpha: 0.10),
+    );
+  }
+}
+
+class DjPendingHeader extends StatelessWidget {
+  final int count;
+
+  const DjPendingHeader({super.key, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Row(
+        children: [
+          const Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: DjSectionTitle('TIPS EN ATTENTE'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            height: 20,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: kDjHotPink,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const Spacer(),
+          const Text(
+            'Voir tout ›',
+            style: TextStyle(
+              color: kDjGreyMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -378,16 +635,14 @@ class DjSectionTitle extends StatelessWidget {
   }
 }
 
-class DjTipCard extends StatelessWidget {
+class PendingTipRow extends StatelessWidget {
   final Tip tip;
-  final bool compact;
   final VoidCallback onAccept;
   final VoidCallback onRefuse;
 
-  const DjTipCard({
+  const PendingTipRow({
     super.key,
     required this.tip,
-    required this.compact,
     required this.onAccept,
     required this.onRefuse,
   });
@@ -395,91 +650,415 @@ class DjTipCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: compact ? 126 : 146,
-      padding: EdgeInsets.all(compact ? 12 : 16),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.045),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        gradient: const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            Color.fromRGBO(255, 46, 159, 0.10),
+            Color.fromRGBO(20, 10, 35, 0.55),
+            Color.fromRGBO(0, 200, 255, 0.10),
+          ],
+        ),
+      ),
+      child: Row(
+        children: [
+          SwipeActionColumn(
+            color: kDjRed,
+            icon: Icons.close_rounded,
+            label: 'Refuser',
+            onTap: onRefuse,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Dismissible(
+              key: ValueKey(tip.id),
+              direction: DismissDirection.horizontal,
+              onDismissed: (direction) {
+                if (direction == DismissDirection.startToEnd) {
+                  onAccept();
+                } else {
+                  onRefuse();
+                }
+              },
+              child: PendingTipCard(tip: tip),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SwipeActionColumn(
+            color: kDjCyan,
+            icon: Icons.check_rounded,
+            label: 'Accepter',
+            onTap: onAccept,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SwipeActionColumn extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const SwipeActionColumn({
+    super.key,
+    required this.color,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 58,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color.withValues(alpha: 0.16),
+                border: Border.all(color: color.withValues(alpha: 0.65)),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.45),
+                    blurRadius: 14,
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PendingTipCard extends StatelessWidget {
+  final Tip tip;
+
+  const PendingTipCard({super.key, required this.tip});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF14091F),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: kDjPink.withValues(alpha: 0.25)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: compact ? 42 : 48,
-                height: compact ? 42 : 48,
+                width: 46,
+                height: 46,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: kDjPink.withValues(alpha: 0.16),
-                  border: Border.all(color: kDjPink.withValues(alpha: 0.45)),
+                  border: Border.all(color: kDjPink.withValues(alpha: 0.65)),
                 ),
                 child: Text(
                   tip.fanName.substring(0, 1).toUpperCase(),
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: kDjPink,
-                    fontSize: compact ? 19 : 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  tip.fanName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: compact ? 16 : 18,
-                    fontWeight: FontWeight.w900,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tip.fanName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (tip.fanHandle.isNotEmpty)
+                      Text(
+                        tip.fanHandle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: kDjGreyMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                  ],
                 ),
               ),
               Text(
                 '${tip.amount} €',
-                style: TextStyle(
+                style: const TextStyle(
                   color: kDjPink,
-                  fontSize: compact ? 24 : 28,
+                  fontSize: 22,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                tip.message,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: kDjGreyText,
-                  fontSize: 13,
+          const SizedBox(height: 10),
+          Text(
+            tip.message,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFFE8E4F2),
+              fontSize: 13,
+              height: 1.35,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            height: 24,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: kDjPink.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.schedule, color: kDjPink, size: 12),
+                SizedBox(width: 5),
+                Text(
+                  'En attente',
+                  style: TextStyle(
+                    color: kDjPink,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SwipeHintRow extends StatelessWidget {
+  const SwipeHintRow({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.arrow_back, color: kDjPink, size: 14),
+        const SizedBox(width: 6),
+        const Expanded(
+          child: Text(
+            'Glisser à gauche\npour refuser',
+            style: TextStyle(
+              color: kDjPink,
+              fontSize: 11,
+              height: 1.25,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.arrow_back, color: kDjPink, size: 14),
+            SizedBox(width: 2),
+            Icon(Icons.touch_app_outlined, color: Colors.white, size: 22),
+            SizedBox(width: 2),
+            Icon(Icons.arrow_forward, color: kDjCyan, size: 14),
+          ],
+        ),
+        const Expanded(
+          child: Text(
+            'Glisser à droite\npour accepter',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: kDjCyan,
+              fontSize: 11,
+              height: 1.25,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        const Icon(Icons.arrow_forward, color: kDjCyan, size: 14),
+      ],
+    );
+  }
+}
+
+class AutoMessageCard extends StatelessWidget {
+  final bool enabled;
+  final String message;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onEdit;
+
+  const AutoMessageCard({
+    super.key,
+    required this.enabled,
+    required this.message,
+    required this.onToggle,
+    required this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.035),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(child: DjSectionTitle('MESSAGE AUTOMATIQUE')),
+              const Text(
+                'Activé',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: DjDecisionButton(
-                  label: 'REFUSER',
-                  icon: Icons.close_rounded,
-                  color: const Color(0xFFFF4B6E),
-                  onTap: onRefuse,
-                ),
+              const SizedBox(width: 4),
+              Switch(
+                value: enabled,
+                onChanged: onToggle,
+                activeThumbColor: Colors.white,
+                activeTrackColor: kDjPink,
+                inactiveThumbColor: kDjGreyMuted,
+                inactiveTrackColor: Colors.white.withValues(alpha: 0.10),
               ),
-              const SizedBox(width: 8),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: kDjPink, width: 1.6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: kDjPink.withValues(alpha: 0.40),
+                      blurRadius: 14,
+                    ),
+                  ],
+                ),
+                child:
+                    const Icon(Icons.chat_bubble_outline, color: kDjPink, size: 24),
+              ),
+              const SizedBox(width: 12),
               Expanded(
-                child: DjDecisionButton(
-                  label: 'ACCEPTER',
-                  icon: Icons.check_rounded,
-                  color: kDjCyan,
-                  onTap: onAccept,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Envoyé automatiquement après acceptation',
+                      style: TextStyle(
+                        color: kDjGreyMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              message,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                height: 1.4,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          onTap: onEdit,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: kDjPink.withValues(alpha: 0.65)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.edit_outlined,
+                                    color: kDjPink, size: 14),
+                                SizedBox(width: 5),
+                                Text(
+                                  'Modifier',
+                                  style: TextStyle(
+                                    color: kDjPink,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -490,88 +1069,219 @@ class DjTipCard extends StatelessWidget {
   }
 }
 
-class DjDecisionButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
+class DjOverviewRow extends StatelessWidget {
+  const DjOverviewRow({super.key});
 
-  const DjDecisionButton({
+  @override
+  Widget build(BuildContext context) {
+    return const IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: DjOverviewCard(
+              icon: Icons.trending_up,
+              label: 'Tips totaux',
+              value: '1 280 €',
+              delta: '+18% vs hier',
+              deltaColor: kDjGreen,
+            ),
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: DjOverviewCard(
+              icon: Icons.euro,
+              label: 'Gains nets',
+              value: '982 €',
+              delta: 'Après frais',
+              deltaColor: kDjGreyMuted,
+            ),
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: DjOverviewCard(
+              icon: Icons.group_outlined,
+              label: 'Nouveaux supporters',
+              value: '24',
+              delta: '+6 vs hier',
+              deltaColor: kDjGreen,
+            ),
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: DjTopFanCard(name: 'Maxime', amount: '210 €'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DjOverviewCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final String delta;
+  final Color deltaColor;
+
+  const DjOverviewCard({
     super.key,
-    required this.label,
     required this.icon,
-    required this.color,
-    required this.onTap,
+    required this.label,
+    required this.value,
+    required this.delta,
+    required this.deltaColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 32,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.13),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.55)),
-        ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.035),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: kDjPink.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, color: kDjPink, size: 16),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: kDjGreyMuted,
+              fontSize: 10,
+              height: 1.2,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            delta,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: deltaColor,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DjTopFanCard extends StatelessWidget {
+  final String name;
+  final String amount;
+
+  const DjTopFanCard({super.key, required this.name, required this.amount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.035),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: kDjPink.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(Icons.star_border, color: kDjPink, size: 16),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Top fan',
+            maxLines: 1,
+            style: TextStyle(
+              color: kDjGreyMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
             children: [
-              Icon(icon, color: color, size: 17),
+              Container(
+                width: 20,
+                height: 20,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: kDjPink.withValues(alpha: 0.16),
+                  border: Border.all(color: kDjPink.withValues(alpha: 0.55)),
+                ),
+                child: Text(
+                  name.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(
+                    color: kDjPink,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
               const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class SwipeAcceptBackground extends StatelessWidget {
-  const SwipeAcceptBackground({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      alignment: Alignment.centerLeft,
-      padding: const EdgeInsets.only(left: 24),
-      decoration: BoxDecoration(
-        color: kDjCyan.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: const Icon(Icons.check_rounded, color: kDjCyan, size: 34),
-    );
-  }
-}
-
-class SwipeRefuseBackground extends StatelessWidget {
-  const SwipeRefuseBackground({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      alignment: Alignment.centerRight,
-      padding: const EdgeInsets.only(right: 24),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFF4B6E).withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: const Icon(
-        Icons.close_rounded,
-        color: Color(0xFFFF4B6E),
-        size: 34,
+          const SizedBox(height: 3),
+          Text(
+            amount,
+            maxLines: 1,
+            style: const TextStyle(
+              color: kDjPink,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -582,23 +1292,21 @@ class EmptyTipsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        height: 130,
-        width: double.infinity,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.045),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: const Text(
-          'Aucun tip en attente',
-          style: TextStyle(
-            color: kDjGreyText,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-          ),
+    return Container(
+      height: 130,
+      width: double.infinity,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.045),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: const Text(
+        'Aucun tip en attente',
+        style: TextStyle(
+          color: kDjGreyText,
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -606,21 +1314,21 @@ class EmptyTipsCard extends StatelessWidget {
 }
 
 class DjBottomNav extends StatelessWidget {
-  final double height;
   final int currentIndex;
   final ValueChanged<int> onChanged;
 
   const DjBottomNav({
     super.key,
-    required this.height,
     required this.currentIndex,
     required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.of(context).size.height <= 860;
+
     return Container(
-      height: height,
+      height: compact ? 66 : 76,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.035),
         borderRadius: BorderRadius.circular(22),
@@ -630,16 +1338,22 @@ class DjBottomNav extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           DjNavItem(
-            active: currentIndex == 0,
-            icon: Icons.people_outline,
-            label: 'Fan',
+            active: currentIndex == 1,
+            icon: Icons.grid_view_rounded,
+            label: 'Dashboard',
+            onTap: () => onChanged(1),
+          ),
+          DjNavItem(
+            active: false,
+            icon: Icons.favorite_border,
+            label: 'Tips',
             onTap: () => onChanged(0),
           ),
           DjNavItem(
-            active: currentIndex == 1,
-            icon: Icons.music_note,
-            label: 'DJ',
-            onTap: () => onChanged(1),
+            active: false,
+            icon: Icons.graphic_eq,
+            label: 'Live',
+            onTap: () {},
           ),
           DjNavItem(
             active: currentIndex == 2,
@@ -673,22 +1387,37 @@ class DjNavItem extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 86,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 25),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
+        width: 76,
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  width: 4,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: active ? kDjPink : Colors.transparent,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
