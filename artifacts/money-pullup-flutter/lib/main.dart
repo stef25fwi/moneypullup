@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'core/models/tip.dart';
+import 'core/state/tips_controller.dart';
 import 'features/dj/dj_dashboard_page.dart';
 
 void main() {
@@ -39,27 +41,47 @@ class MoneyPullUpShell extends StatefulWidget {
 }
 
 class _MoneyPullUpShellState extends State<MoneyPullUpShell> {
-  int index = 0;
+  int navIndex = 0;
+  final TipsController _controller = TipsController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return IndexedStack(
-      index: index,
-      children: [
-        FanPage(
-            currentIndex: index,
-            onNavChanged: (v) => setState(() => index = v)),
-        DjDashboardPage(
-          currentIndex: index,
-          onNavChanged: (v) => setState(() => index = v),
-        ),
-        PlaceholderPage(
-          title: 'PROFIL',
-          subtitle: 'Connexion, wallet, historique des tips et paramètres.',
-          currentIndex: index,
-          onNavChanged: (v) => setState(() => index = v),
-        ),
-      ],
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        return IndexedStack(
+          index: navIndex,
+          children: [
+            FanPage(
+              currentIndex: navIndex,
+              onNavChanged: (v) => setState(() => navIndex = v),
+              walletBalance: _controller.walletBalance,
+              onSendTip: (amount, msg) =>
+                  _controller.sendTip(amount: amount, message: msg),
+              onAddFunds: _controller.addFunds,
+            ),
+            DjDashboardPage(
+              currentIndex: navIndex,
+              onNavChanged: (v) => setState(() => navIndex = v),
+              tips: _controller.tips.toList(),
+              onAcceptTip: _controller.acceptTip,
+              onRejectTip: _controller.refuseTip,
+            ),
+            PlaceholderPage(
+              title: 'PROFIL',
+              subtitle: 'Connexion, wallet, historique des tips et paramètres.',
+              currentIndex: navIndex,
+              onNavChanged: (v) => setState(() => navIndex = v),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -67,11 +89,17 @@ class _MoneyPullUpShellState extends State<MoneyPullUpShell> {
 class FanPage extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onNavChanged;
+  final int walletBalance;
+  final bool Function(int amount, String message) onSendTip;
+  final ValueChanged<int> onAddFunds;
 
   const FanPage({
     super.key,
     required this.currentIndex,
     required this.onNavChanged,
+    required this.walletBalance,
+    required this.onSendTip,
+    required this.onAddFunds,
   });
 
   @override
@@ -86,6 +114,131 @@ class _FanPageState extends State<FanPage> {
   void dispose() {
     messageController.dispose();
     super.dispose();
+  }
+
+  void _handleSendTip() {
+    final msg = messageController.text.trim();
+    final success = widget.onSendTip(selectedTip, msg);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? '✅ Tip de $selectedTip€ envoyé !'
+              : '❌ Solde insuffisant.',
+        ),
+        duration: const Duration(seconds: 2),
+        backgroundColor: success
+            ? const Color(0xFF22C55E)
+            : const Color(0xFFFF4B6E),
+      ),
+    );
+    if (success) messageController.clear();
+  }
+
+  void _handleCustomAmount() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF10081E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Montant libre',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          style: const TextStyle(
+              color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700),
+          decoration: const InputDecoration(
+            hintText: 'Ex: 25',
+            hintStyle: TextStyle(color: Color(0xFFA9A3BA)),
+            suffixText: '€',
+            suffixStyle: TextStyle(color: kPink, fontSize: 20),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF7B2CFF)),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: kPink),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler',
+                style: TextStyle(color: Color(0xFFA9A3BA))),
+          ),
+          TextButton(
+            onPressed: () {
+              final val = int.tryParse(ctrl.text.trim());
+              if (val != null && val > 0) {
+                setState(() => selectedTip = val);
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('OK',
+                style: TextStyle(
+                    color: kPink, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleRecharge() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF10081E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Recharger le wallet',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [10, 20, 50, 100].map((amount) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    widget.onAddFunds(amount);
+                    Navigator.pop(ctx);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('💳 $amount€ rechargés !'),
+                        duration: const Duration(seconds: 2),
+                        backgroundColor: kCyan,
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: kCyan,
+                    side: const BorderSide(color: kCyan),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text('+$amount €',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler',
+                style: TextStyle(color: Color(0xFFA9A3BA))),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -157,7 +310,9 @@ class _FanPageState extends State<FanPage> {
                   veryCompact ? 4 : 8),
               child: Column(
                 children: [
-                  HeroDjCard(height: heroHeight),
+                  HeroDjCard(
+                      height: heroHeight,
+                      walletBalance: widget.walletBalance),
                   SizedBox(
                       height: veryCompact
                           ? 6
@@ -226,13 +381,11 @@ class _FanPageState extends State<FanPage> {
                           icon: Icons.grid_view_rounded,
                           iconColor: const Color(0xFFFF7DCE),
                           label: 'MONTANT\nLIBRE',
-                          onTap: () => debugPrint('TODO montant libre'),
+                          onTap: _handleCustomAmount,
                         ),
                         const SizedBox(width: 14),
                         Expanded(
-                            child: MainTipButton(
-                                onTap: () =>
-                                    debugPrint('TODO send tip $selectedTip'))),
+                            child: MainTipButton(onTap: _handleSendTip)),
                         const SizedBox(width: 14),
                         ActionSideButton(
                           width: sideButtonWidth,
@@ -240,7 +393,7 @@ class _FanPageState extends State<FanPage> {
                           icon: Icons.account_balance_wallet_outlined,
                           iconColor: kCyan,
                           label: 'RECHARGER',
-                          onTap: () => debugPrint('TODO recharge'),
+                          onTap: _handleRecharge,
                         ),
                       ],
                     ),
@@ -305,7 +458,9 @@ class GlowBlob extends StatelessWidget {
 
 class HeroDjCard extends StatelessWidget {
   final double height;
-  const HeroDjCard({super.key, required this.height});
+  final int walletBalance;
+  const HeroDjCard(
+      {super.key, required this.height, required this.walletBalance});
 
   @override
   Widget build(BuildContext context) {
@@ -363,13 +518,13 @@ class HeroDjCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(26),
                 border: Border.all(color: kPink.withValues(alpha: 0.35)),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.account_balance_wallet_outlined,
+                  const Icon(Icons.account_balance_wallet_outlined,
                       color: kPink, size: 21),
-                  SizedBox(width: 10),
-                  Text('20,00 €',
-                      style: TextStyle(
+                  const SizedBox(width: 10),
+                  Text('$walletBalance €',
+                      style: const TextStyle(
                           color: Colors.white,
                           fontSize: 17,
                           fontWeight: FontWeight.w700)),
