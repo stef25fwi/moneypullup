@@ -21,8 +21,17 @@ const CYAN = '#00C8FF';
 const PURPLE = '#7B2CFF';
 const BG = '#05020D';
 
-const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1571266028243-d220c9c3b7e8?q=80&w=1200&auto=format&fit=crop';
+const heroImage = (() => {
+  try {
+    return require('../../assets/images/dj_hero_fan.webp');
+  } catch {
+    try {
+      return require('../../assets/images/dj_hero_fan.png');
+    } catch {
+      return require('../../assets/images/dj_hero_bg.png');
+    }
+  }
+})();
 
 export default function FanScreen() {
   const [selectedTip, setSelectedTip] = useState(10);
@@ -45,6 +54,18 @@ export default function FanScreen() {
 
   const tips = [5, 10, 15, 20];
 
+  const handleSendTip = () => {
+    console.log('TODO send tip', { amount: selectedTip, message });
+  };
+
+  const handleCustomAmount = () => {
+    console.log('TODO open custom amount modal');
+  };
+
+  const handleRecharge = () => {
+    console.log('TODO navigate to recharge wallet');
+  };
+
   return (
     <View style={styles.root}>
       <LinearGradient
@@ -61,7 +82,7 @@ export default function FanScreen() {
         <View style={styles.page}>
           <View style={[styles.hero, { height: sizes.heroHeight }]}>
             <ImageBackground
-              source={{ uri: HERO_IMAGE }}
+              source={heroImage}
               resizeMode="cover"
               style={styles.heroImage}
               imageStyle={styles.heroImageRadius}
@@ -122,8 +143,7 @@ export default function FanScreen() {
           <View style={[styles.tipRow, { marginTop: compact ? 10 : 14 }]}>
             {tips.map((tip) => {
               const active = selectedTip === tip;
-              const borderColor =
-                tip === 15 ? CYAN : tip === 20 ? PURPLE : PINK;
+              const borderColor = tip === 15 ? CYAN : tip === 20 ? PURPLE : PINK;
 
               return (
                 <Pressable
@@ -187,12 +207,12 @@ export default function FanScreen() {
           <View style={{ height: compact ? 10 : 14 }} />
 
           <View style={[styles.actionsRow, { height: sizes.actionHeight }]}>
-            <Pressable style={styles.secondaryButton}>
+            <Pressable style={styles.secondaryButton} onPress={handleCustomAmount}>
               <MaterialCommunityIcons name="view-grid-outline" size={24} color="#FF7DCE" />
               <Text style={styles.secondaryButtonText}>MONTANT{'\n'}LIBRE</Text>
             </Pressable>
 
-            <Pressable style={styles.mainButton}>
+            <Pressable style={styles.mainButton} onPress={handleSendTip}>
               <LinearGradient
                 colors={[PINK, HOT_PINK]}
                 start={{ x: 0, y: 0 }}
@@ -204,7 +224,7 @@ export default function FanScreen() {
               </LinearGradient>
             </Pressable>
 
-            <Pressable style={[styles.secondaryButton, styles.rechargeButton]}>
+            <Pressable style={[styles.secondaryButton, styles.rechargeButton]} onPress={handleRecharge}>
               <Ionicons name="wallet-outline" size={25} color={CYAN} />
               <Text style={styles.secondaryButtonText}>RECHARGER</Text>
             </Pressable>
@@ -238,13 +258,8 @@ export default function FanScreen() {
 const glassBorder = 'rgba(255,255,255,0.10)';
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  safe: {
-    flex: 1,
-  },
+  root: { flex: 1, backgroundColor: BG },
+  safe: { flex: 1 },
   page: {
     flex: 1,
     paddingHorizontal: 18,
@@ -281,12 +296,8 @@ const styles = StyleSheet.create({
     borderColor: glassBorder,
     backgroundColor: '#10081E',
   },
-  heroImage: {
-    flex: 1,
-  },
-  heroImageRadius: {
-    borderRadius: 22,
-  },
+  heroImage: { flex: 1 },
+  heroImageRadius: { borderRadius: 22 },
   liveBadge: {
     position: 'absolute',
     top: 20,
@@ -423,9 +434,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '500',
   },
-  tipTextActive: {
-    fontWeight: '900',
-  },
+  tipTextActive: { fontWeight: '900' },
   amountBox: {
     marginTop: 9,
     width: '100%',
@@ -575,9 +584,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  navTextActive: {
-    color: PINK,
-  },
+  navTextActive: { color: PINK },
   activeDot: {
     marginTop: 6,
     width: 5,
