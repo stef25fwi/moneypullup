@@ -59,3 +59,11 @@ dist/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+node_modules/
+dist/
+build/
+.expo/
+.cache/
+.env
+.env.*
+.DS_Store
