@@ -953,7 +953,7 @@ class AutoMessageCard extends StatelessWidget {
             children: [
               const Expanded(child: DjSectionTitle('MESSAGE AUTOMATIQUE')),
               const Text(
-                'Activé',
+                'Active',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -1083,7 +1083,7 @@ class DjOverviewRow extends StatelessWidget {
               icon: Icons.trending_up,
               label: 'Tips totaux',
               value: '1 280 €',
-              delta: '+18% vs hier',
+              delta: '+8% vs hier',
               deltaColor: kDjGreen,
             ),
           ),
@@ -1091,10 +1091,10 @@ class DjOverviewRow extends StatelessWidget {
           Expanded(
             child: DjOverviewCard(
               icon: Icons.euro,
-              label: 'Gains nets',
+              label: 'Cette semaine',
               value: '982 €',
-              delta: 'Après frais',
-              deltaColor: kDjGreyMuted,
+              delta: '-3% vs hier',
+              deltaColor: kDjRed,
             ),
           ),
           SizedBox(width: 8),
@@ -1109,7 +1109,7 @@ class DjOverviewRow extends StatelessWidget {
           ),
           SizedBox(width: 8),
           Expanded(
-            child: DjTopFanCard(name: 'Maxime', amount: '210 €'),
+            child: DjTopFanCard(name: 'Maxime', amount: '71 €'),
           ),
         ],
       ),
