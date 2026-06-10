@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'features/dj/dj_dashboard_page.dart';
 
 void main() {
   runApp(const MoneyPullUpApp());
@@ -45,10 +46,10 @@ class _MoneyPullUpShellState extends State<MoneyPullUpShell> {
     return IndexedStack(
       index: index,
       children: [
-        FanPage(currentIndex: index, onNavChanged: (v) => setState(() => index = v)),
-        PlaceholderPage(
-          title: 'DJ DASHBOARD',
-          subtitle: 'Gestion des tips, acceptation/refus et statistiques live.',
+        FanPage(
+            currentIndex: index,
+            onNavChanged: (v) => setState(() => index = v)),
+        DjDashboardPage(
           currentIndex: index,
           onNavChanged: (v) => setState(() => index = v),
         ),
@@ -103,9 +104,18 @@ class _FanPageState extends State<FanPage> {
       body: Stack(
         children: [
           const Positioned.fill(child: NeonBackground()),
-          const Positioned(left: -110, bottom: 10, child: GlowBlob(color: Color.fromRGBO(255, 46, 159, 0.38))),
-          const Positioned(right: -120, bottom: 42, child: GlowBlob(color: Color.fromRGBO(0, 200, 255, 0.30))),
-          const Positioned(right: -80, top: 60, child: GlowBlob(color: Color.fromRGBO(123, 44, 255, 0.24))),
+          const Positioned(
+              left: -110,
+              bottom: 10,
+              child: GlowBlob(color: Color.fromRGBO(255, 46, 159, 0.38))),
+          const Positioned(
+              right: -120,
+              bottom: 42,
+              child: GlowBlob(color: Color.fromRGBO(0, 200, 255, 0.30))),
+          const Positioned(
+              right: -80,
+              top: 60,
+              child: GlowBlob(color: Color.fromRGBO(123, 44, 255, 0.24))),
           SafeArea(
             child: Padding(
               padding: EdgeInsets.fromLTRB(18, compact ? 4 : 6, 18, 8),
@@ -119,7 +129,11 @@ class _FanPageState extends State<FanPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [5, 10, 15, 20].map((tip) {
                       final active = selectedTip == tip;
-                      final color = tip == 15 ? kCyan : tip == 20 ? kPurple : kPink;
+                      final color = tip == 15
+                          ? kCyan
+                          : tip == 20
+                              ? kPurple
+                              : kPink;
                       return TipButton(
                         amount: tip,
                         size: tipCircle,
@@ -132,7 +146,10 @@ class _FanPageState extends State<FanPage> {
                   SizedBox(height: compact ? 12 : 16),
                   const SectionTitle('VOTRE TIP'),
                   const SizedBox(height: 9),
-                  AmountBox(height: amountBox, amount: selectedTip, fontSize: amountFont),
+                  AmountBox(
+                      height: amountBox,
+                      amount: selectedTip,
+                      fontSize: amountFont),
                   SizedBox(height: compact ? 8 : 12),
                   const MoneyPullUpInfo(),
                   const SizedBox(height: 12),
@@ -150,7 +167,10 @@ class _FanPageState extends State<FanPage> {
                           onTap: () => debugPrint('TODO montant libre'),
                         ),
                         const SizedBox(width: 14),
-                        Expanded(child: MainTipButton(onTap: () => debugPrint('TODO send tip $selectedTip'))),
+                        Expanded(
+                            child: MainTipButton(
+                                onTap: () =>
+                                    debugPrint('TODO send tip $selectedTip'))),
                         const SizedBox(width: 14),
                         ActionSideButton(
                           borderColor: kCyan,
@@ -227,12 +247,13 @@ class HeroDjCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF10081E),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/images/dj_hero_fan.png', fit: BoxFit.cover, alignment: Alignment.center),
+          Image.asset('assets/images/dj_hero_fan.png',
+              fit: BoxFit.cover, alignment: Alignment.center),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -253,8 +274,14 @@ class HeroDjCard extends StatelessWidget {
               height: 30,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: kHotPink, borderRadius: BorderRadius.circular(8)),
-              child: const Text('● LIVE', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+              decoration: BoxDecoration(
+                  color: kHotPink, borderRadius: BorderRadius.circular(8)),
+              child: const Text('● LIVE',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5)),
             ),
           ),
           Positioned(
@@ -266,13 +293,18 @@ class HeroDjCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color.fromRGBO(20, 10, 35, 0.68),
                 borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: kPink.withOpacity(0.35)),
+                border: Border.all(color: kPink.withValues(alpha: 0.35)),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.account_balance_wallet_outlined, color: kPink, size: 21),
+                  Icon(Icons.account_balance_wallet_outlined,
+                      color: kPink, size: 21),
                   SizedBox(width: 10),
-                  Text('20,00 €', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                  Text('20,00 €',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -283,14 +315,28 @@ class HeroDjCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('DJ', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
-                Text('MASTER BEAT', style: TextStyle(color: Colors.white, fontSize: 38, height: 1.08, fontWeight: FontWeight.w900, letterSpacing: 0.4)),
+                Text('DJ',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900)),
+                Text('MASTER BEAT',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 38,
+                        height: 1.08,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.4)),
                 SizedBox(height: 8),
                 Row(
                   children: [
                     Icon(Icons.graphic_eq, color: kPink, size: 18),
                     SizedBox(width: 8),
-                    Text('House • Techno • Live Set', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text('House • Techno • Live Set',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600)),
                   ],
                 ),
               ],
@@ -305,13 +351,24 @@ class HeroDjCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color.fromRGBO(10, 6, 24, 0.66),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.10)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
               ),
               child: Row(
                 children: [
-                  const Expanded(child: StatItem(icon: Icons.favorite_border, value: '12.5K', label: 'Fans')),
-                  Container(width: 1, height: 44, color: Colors.white.withOpacity(0.10)),
-                  const Expanded(child: StatItem(icon: Icons.person_outline, value: '340', label: 'En live')),
+                  const Expanded(
+                      child: StatItem(
+                          icon: Icons.favorite_border,
+                          value: '12.5K',
+                          label: 'Fans')),
+                  Container(
+                      width: 1,
+                      height: 44,
+                      color: Colors.white.withValues(alpha: 0.10)),
+                  const Expanded(
+                      child: StatItem(
+                          icon: Icons.person_outline,
+                          value: '340',
+                          label: 'En live')),
                 ],
               ),
             ),
@@ -327,7 +384,11 @@ class StatItem extends StatelessWidget {
   final String value;
   final String label;
 
-  const StatItem({super.key, required this.icon, required this.value, required this.label});
+  const StatItem(
+      {super.key,
+      required this.icon,
+      required this.value,
+      required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -340,8 +401,17 @@ class StatItem extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-            Text(label, style: const TextStyle(color: kGreyText, fontSize: 13, fontWeight: FontWeight.w600, height: 0.95)),
+            Text(value,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800)),
+            Text(label,
+                style: const TextStyle(
+                    color: kGreyText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 0.95)),
           ],
         ),
       ],
@@ -358,7 +428,11 @@ class SectionTitle extends StatelessWidget {
     return Text(
       text,
       textAlign: TextAlign.center,
-      style: const TextStyle(color: kGreyText, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 2.2),
+      style: const TextStyle(
+          color: kGreyText,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 2.2),
     );
   }
 }
@@ -390,11 +464,23 @@ class TipButton extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: active ? const Color.fromRGBO(255, 46, 159, 0.08) : const Color.fromRGBO(255, 255, 255, 0.035),
-          border: Border.all(color: active ? kPink : color, width: active ? 2.5 : 1.25),
-          boxShadow: active ? [BoxShadow(color: kPink.withOpacity(0.90), blurRadius: 18)] : [],
+          color: active
+              ? const Color.fromRGBO(255, 46, 159, 0.08)
+              : const Color.fromRGBO(255, 255, 255, 0.035),
+          border: Border.all(
+              color: active ? kPink : color, width: active ? 2.5 : 1.25),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                      color: kPink.withValues(alpha: 0.90), blurRadius: 18)
+                ]
+              : [],
         ),
-        child: Text('$amount€', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: active ? FontWeight.w900 : FontWeight.w500)),
+        child: Text('$amount€',
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: active ? FontWeight.w900 : FontWeight.w500)),
       ),
     );
   }
@@ -405,7 +491,11 @@ class AmountBox extends StatelessWidget {
   final int amount;
   final double fontSize;
 
-  const AmountBox({super.key, required this.height, required this.amount, required this.fontSize});
+  const AmountBox(
+      {super.key,
+      required this.height,
+      required this.amount,
+      required this.fontSize});
 
   @override
   Widget build(BuildContext context) {
@@ -415,7 +505,7 @@ class AmountBox extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
         gradient: const LinearGradient(
           colors: [
             Color.fromRGBO(255, 255, 255, 0.06),
@@ -429,7 +519,9 @@ class AmountBox extends StatelessWidget {
           color: kPink,
           fontSize: fontSize,
           fontWeight: FontWeight.w900,
-          shadows: [Shadow(color: kPink.withOpacity(0.45), blurRadius: 16)],
+          shadows: [
+            Shadow(color: kPink.withValues(alpha: 0.45), blurRadius: 16)
+          ],
         ),
       ),
     );
@@ -453,17 +545,29 @@ class MoneyPullUpInfo extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: kPink, width: 2),
-              boxShadow: [BoxShadow(color: kPink.withOpacity(0.45), blurRadius: 12)],
+              boxShadow: [
+                BoxShadow(color: kPink.withValues(alpha: 0.45), blurRadius: 12)
+              ],
             ),
-            child: const Text(r'$', style: TextStyle(color: kPink, fontSize: 22, fontWeight: FontWeight.w800)),
+            child: const Text(r'$',
+                style: TextStyle(
+                    color: kPink, fontSize: 22, fontWeight: FontWeight.w800)),
           ),
           const SizedBox(width: 12),
           const Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Money Pull-up', style: TextStyle(color: Color(0xFFFFD3EA), fontSize: 16, fontWeight: FontWeight.w800)),
-              Text('Le soutien qui fait monter le son.', style: TextStyle(color: Color.fromRGBO(255, 255, 255, 0.88), fontSize: 13, fontWeight: FontWeight.w600)),
+              Text('Money Pull-up',
+                  style: TextStyle(
+                      color: Color(0xFFFFD3EA),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
+              Text('Le soutien qui fait monter le son.',
+                  style: TextStyle(
+                      color: Color.fromRGBO(255, 255, 255, 0.88),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600)),
             ],
           ),
         ],
@@ -503,7 +607,7 @@ class _MessageInputState extends State<MessageInput> {
       decoration: BoxDecoration(
         color: const Color.fromRGBO(255, 255, 255, 0.035),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
       child: Row(
         children: [
@@ -511,17 +615,27 @@ class _MessageInputState extends State<MessageInput> {
             child: TextField(
               controller: widget.controller,
               maxLength: 120,
-              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500),
               decoration: const InputDecoration(
                 counterText: '',
                 border: InputBorder.none,
                 hintText: 'Un message pour le DJ... (optionnel)',
-                hintStyle: TextStyle(color: Color(0xFFA9A3BA), fontSize: 14, fontWeight: FontWeight.w500),
+                hintStyle: TextStyle(
+                    color: Color(0xFFA9A3BA),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          Text('${widget.controller.text.length}/120', style: const TextStyle(color: Color(0xFFA9A3BA), fontSize: 13, fontWeight: FontWeight.w600)),
+          Text('${widget.controller.text.length}/120',
+              style: const TextStyle(
+                  color: Color(0xFFA9A3BA),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -562,7 +676,14 @@ class ActionSideButton extends StatelessWidget {
             children: [
               Icon(icon, color: iconColor, size: 25),
               const SizedBox(height: 5),
-              Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11.5, height: 1.15, fontWeight: FontWeight.w900, letterSpacing: 0.4)),
+              Text(label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11.5,
+                      height: 1.15,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.4)),
             ],
           ),
         ),
@@ -583,11 +704,16 @@ class MainTipButton extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: kPink.withOpacity(0.55), blurRadius: 20)],
+          boxShadow: [
+            BoxShadow(color: kPink.withValues(alpha: 0.55), blurRadius: 20)
+          ],
         ),
         child: const DecoratedBox(
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [kPink, kHotPink], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            gradient: LinearGradient(
+                colors: [kPink, kHotPink],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight),
           ),
           child: Center(
             child: Row(
@@ -595,7 +721,12 @@ class MainTipButton extends StatelessWidget {
               children: [
                 Icon(Icons.flash_on, color: Colors.white, size: 22),
                 SizedBox(width: 9),
-                Text('ENVOYER LE TIP', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 0.2)),
+                Text('ENVOYER LE TIP',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.2)),
               ],
             ),
           ),
@@ -610,7 +741,11 @@ class CustomBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onChanged;
 
-  const CustomBottomNav({super.key, required this.height, required this.currentIndex, required this.onChanged});
+  const CustomBottomNav(
+      {super.key,
+      required this.height,
+      required this.currentIndex,
+      required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -619,14 +754,26 @@ class CustomBottomNav extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color.fromRGBO(255, 255, 255, 0.035),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          NavItem(active: currentIndex == 0, icon: Icons.people_outline, label: 'Fan', onTap: () => onChanged(0)),
-          NavItem(active: currentIndex == 1, icon: Icons.music_note, label: 'DJ', onTap: () => onChanged(1)),
-          NavItem(active: currentIndex == 2, icon: Icons.person_outline, label: 'Profil', onTap: () => onChanged(2)),
+          NavItem(
+              active: currentIndex == 0,
+              icon: Icons.people_outline,
+              label: 'Fan',
+              onTap: () => onChanged(0)),
+          NavItem(
+              active: currentIndex == 1,
+              icon: Icons.music_note,
+              label: 'DJ',
+              onTap: () => onChanged(1)),
+          NavItem(
+              active: currentIndex == 2,
+              icon: Icons.person_outline,
+              label: 'Profil',
+              onTap: () => onChanged(2)),
         ],
       ),
     );
@@ -639,7 +786,12 @@ class NavItem extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const NavItem({super.key, required this.active, required this.icon, required this.label, required this.onTap});
+  const NavItem(
+      {super.key,
+      required this.active,
+      required this.icon,
+      required this.label,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -654,12 +806,16 @@ class NavItem extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 28),
             const SizedBox(height: 4),
-            Text(label, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w700)),
+            Text(label,
+                style: TextStyle(
+                    color: color, fontSize: 14, fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             Container(
               width: 5,
               height: 5,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: active ? kPink : Colors.transparent),
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: active ? kPink : Colors.transparent),
             ),
           ],
         ),
@@ -690,7 +846,10 @@ class PlaceholderPage extends StatelessWidget {
       body: Stack(
         children: [
           const Positioned.fill(child: NeonBackground()),
-          const Positioned(left: -110, bottom: 10, child: GlowBlob(color: Color.fromRGBO(255, 46, 159, 0.32))),
+          const Positioned(
+              left: -110,
+              bottom: 10,
+              child: GlowBlob(color: Color.fromRGBO(255, 46, 159, 0.32))),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
@@ -702,22 +861,36 @@ class PlaceholderPage extends StatelessWidget {
                         width: double.infinity,
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.045),
+                          color: Colors.white.withValues(alpha: 0.045),
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white.withOpacity(0.10)),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.10)),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
+                            Text(title,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w900)),
                             const SizedBox(height: 12),
-                            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: kGreyText, fontSize: 15, fontWeight: FontWeight.w600)),
+                            Text(subtitle,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    color: kGreyText,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
                     ),
                   ),
-                  CustomBottomNav(height: compact ? 74 : 84, currentIndex: currentIndex, onChanged: onNavChanged),
+                  CustomBottomNav(
+                      height: compact ? 74 : 84,
+                      currentIndex: currentIndex,
+                      onChanged: onNavChanged),
                 ],
               ),
             ),

@@ -51,3 +51,4 @@ firebase-debug.log
 # Build
 build/
 .dart_tool/
+build_logs/
