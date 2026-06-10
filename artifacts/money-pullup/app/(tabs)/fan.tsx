@@ -21,17 +21,7 @@ const CYAN = '#00C8FF';
 const PURPLE = '#7B2CFF';
 const BG = '#05020D';
 
-const heroImage = (() => {
-  try {
-    return require('../../assets/images/dj_hero_fan.webp');
-  } catch {
-    try {
-      return require('../../assets/images/dj_hero_fan.png');
-    } catch {
-      return require('../../assets/images/dj_hero_bg.png');
-    }
-  }
-})();
+const heroImage = require('../../assets/images/dj_hero_fan.png');
 
 export default function FanScreen() {
   const [selectedTip, setSelectedTip] = useState(10);
