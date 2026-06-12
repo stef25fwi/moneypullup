@@ -59,3 +59,14 @@ dist/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+
+# Flutter generated / local files
+artifacts/money-pullup-flutter/.dart_tool/
+artifacts/money-pullup-flutter/build/
+artifacts/money-pullup-flutter/.firebase/
+artifacts/money-pullup-flutter/.idea/
+artifacts/money-pullup-flutter/android/local.properties
+artifacts/money-pullup-flutter/*.iml
+artifacts/money-pullup-flutter/android/*.iml
+artifacts/money-pullup-flutter/ios/Flutter/ephemeral/
+artifacts/money-pullup-flutter/macos/Flutter/ephemeral/
