@@ -60,6 +60,27 @@ persisted, and the balance route returns `503 db_not_configured`. The in-app
 spendable balance is still tracked locally (it also nets out local tip
 spending); the DB wallet is the financial record of money moved through Stripe.
 
+## Tips & balances (server-authoritative, requires DB)
+
+Tips are recorded server-side so the fan wallet is the single source of truth.
+
+| Method | Path                          | Purpose                                                    |
+| ------ | ----------------------------- | ---------------------------------------------------------- |
+| `POST` | `/api/tips`                   | Send a tip: debits the fan wallet, creates a pending tip.  |
+| `GET`  | `/api/tips?djId=&fanWalletId=`| List tips (filter by DJ and/or fan wallet).                |
+| `POST` | `/api/tips/:id/accept`        | DJ claims a pending tip.                                   |
+| `POST` | `/api/tips/:id/refuse`        | Refuse a pending tip and refund the fan.                   |
+| `GET`  | `/api/djs/:djId/earnings`     | `{ totalCents, availableCents }` (accepted minus payouts). |
+
+- `POST /api/tips` is idempotent on a client-supplied `id`; insufficient
+  balance returns `402`.
+- `POST /api/connect/payouts` accepts an optional `djId`; when set (and a DB is
+  configured) the available balance is enforced and the payout is recorded in
+  the DJ ledger, so `availableCents` nets out completed payouts.
+- The client (`TipsContext`) applies optimistic local updates and reconciles
+  with these endpoints when `EXPO_PUBLIC_API_URL` is set, falling back to fully
+  local behaviour offline / when unconfigured.
+
 ## Required environment variables (server)
 
 | Variable                 | Notes                                                        |

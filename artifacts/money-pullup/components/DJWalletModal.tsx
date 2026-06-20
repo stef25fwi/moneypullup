@@ -132,7 +132,7 @@ export function DJWalletModal({ visible, onClose, djId }: Props) {
     }
     setBusy(true);
     try {
-      const transferId = await requestPayout(accountId, amt);
+      const transferId = await requestPayout(accountId, amt, djId);
       recordPayout(djId, amt, { destinationLabel: "Compte Stripe", stripeTransferId: transferId });
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTransferSuccess(true);

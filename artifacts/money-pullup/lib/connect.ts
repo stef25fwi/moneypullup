@@ -79,10 +79,15 @@ export async function startOnboarding(accountId: string): Promise<OnboardingResu
  * Pays a DJ out from the platform balance to their connected account.
  * Returns the Stripe transfer id.
  */
-export async function requestPayout(accountId: string, amount: number): Promise<string> {
+export async function requestPayout(
+  accountId: string,
+  amount: number,
+  djId?: string,
+): Promise<string> {
   const data = await postJson<{ transferId: string }>("/api/connect/payouts", {
     accountId,
     amount,
+    ...(djId ? { djId } : {}),
   });
   return data.transferId;
 }
