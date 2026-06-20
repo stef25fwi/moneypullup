@@ -26,6 +26,11 @@ app.use(
   }),
 );
 app.use(cors());
+
+// Stripe webhook signature verification needs the raw request body, so this
+// route must be registered with a raw parser BEFORE the global JSON parser.
+app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
