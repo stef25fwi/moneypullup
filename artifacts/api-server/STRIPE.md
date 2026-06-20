@@ -19,6 +19,25 @@ Stripe-hosted Checkout page; the wallet is credited server-side by the webhook.
 
 `amount` is in euros (1–1000). It is converted to cents server-side.
 
+## Connect endpoints (DJ payouts)
+
+DJs are paid via Stripe Connect Express accounts. Tips collected on the
+platform balance are transferred to a DJ's connected account, which Stripe
+pays out to their bank.
+
+| Method | Path                                | Purpose                                                  |
+| ------ | ----------------------------------- | -------------------------------------------------------- |
+| `POST` | `/api/connect/accounts`             | Create an Express account for a DJ → `{ accountId }`.    |
+| `POST` | `/api/connect/onboarding-link`      | Hosted KYC/bank onboarding link → `{ url }`.             |
+| `GET`  | `/api/connect/accounts/:accountId`  | Readiness → `{ detailsSubmitted, chargesEnabled, payoutsEnabled }`. |
+| `POST` | `/api/connect/payouts`              | Transfer platform funds to a DJ → `{ transferId }`.      |
+
+`POST /api/connect/payouts` body: `{ "accountId": "acct_…", "amount": 25 }`
+(`amount` in euros). The platform Stripe balance must hold enough funds.
+
+Enable **Connect** in the Stripe Dashboard and configure the Express
+onboarding branding before going live.
+
 ## Required environment variables (server)
 
 | Variable                 | Notes                                                        |

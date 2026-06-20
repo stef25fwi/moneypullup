@@ -40,7 +40,12 @@ export interface DJTransfer {
   amount: number;
   date: Date;
   status: TransferStatus;
-  iban: string;
+  /** Legacy IBAN destination (pre-Stripe-Connect transfers). */
+  iban?: string;
+  /** Human-readable payout destination, e.g. "Compte Stripe". */
+  destinationLabel?: string;
+  /** Stripe transfer id (`tr_…`) for Connect payouts. */
+  stripeTransferId?: string;
 }
 
 export interface DJ {
@@ -73,6 +78,7 @@ interface TipsContextType {
   currentDJName: string;
   fanProfile: FanProfile;
   djBankAccounts: Record<string, BankAccount>;
+  djStripeAccounts: Record<string, string>;
   djTransfers: DJTransfer[];
   addFunds: (amount: number) => void;
   sendTip: (djId: string, amount: number, message: string) => boolean;
@@ -86,7 +92,12 @@ interface TipsContextType {
   updateDJSocialLinks: (djId: string, links: SocialLinks) => void;
   updateFanProfile: (profile: Partial<FanProfile>) => void;
   updateDJBankAccount: (djId: string, account: BankAccount) => void;
-  requestTransfer: (djId: string, amount: number) => boolean;
+  setDJStripeAccount: (djId: string, accountId: string) => void;
+  recordPayout: (
+    djId: string,
+    amount: number,
+    opts: { destinationLabel: string; stripeTransferId: string },
+  ) => void;
   getDJAvailableBalance: (djId: string) => number;
   getTipsForDJ: (djId: string) => Tip[];
   getPendingTipsForDJ: (djId: string) => Tip[];
@@ -151,6 +162,7 @@ const STORAGE_KEY_DJS = "@moneypullup/djs";
 const STORAGE_KEY_FAN = "@moneypullup/fan";
 const STORAGE_KEY_BANK = "@moneypullup/bank";
 const STORAGE_KEY_TRANSFERS = "@moneypullup/transfers";
+const STORAGE_KEY_CONNECT = "@moneypullup/connect";
 
 export function TipsProvider({ children }: { children: React.ReactNode }) {
   const [wallet, setWallet] = useState<WalletState>({ balance: 0, currency: "EUR" });
@@ -162,18 +174,20 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
   const [currentDJName, setCurrentDJName] = useState("DJ MASTER BEAT");
   const [fanProfile, setFanProfile] = useState<FanProfile>({ name: "Fan", avatar: "🎤" });
   const [djBankAccounts, setDjBankAccounts] = useState<Record<string, BankAccount>>({});
+  const [djStripeAccounts, setDjStripeAccounts] = useState<Record<string, string>>({});
   const [djTransfers, setDjTransfers] = useState<DJTransfer[]>([]);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [w, t, d, f, b, tr] = await Promise.all([
+        const [w, t, d, f, b, tr, cn] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_WALLET),
           AsyncStorage.getItem(STORAGE_KEY_TIPS),
           AsyncStorage.getItem(STORAGE_KEY_DJS),
           AsyncStorage.getItem(STORAGE_KEY_FAN),
           AsyncStorage.getItem(STORAGE_KEY_BANK),
           AsyncStorage.getItem(STORAGE_KEY_TRANSFERS),
+          AsyncStorage.getItem(STORAGE_KEY_CONNECT),
         ]);
         if (w) setWallet(JSON.parse(w));
         if (t) {
@@ -189,6 +203,7 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
         }
         if (f) setFanProfile(JSON.parse(f));
         if (b) setDjBankAccounts(JSON.parse(b));
+        if (cn) setDjStripeAccounts(JSON.parse(cn));
         if (tr) {
           const parsed = JSON.parse(tr) as DJTransfer[];
           setDjTransfers(parsed.map((t) => ({ ...t, date: new Date(t.date) })));
@@ -295,37 +310,38 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
     return Math.max(0, earned - transferred);
   }, [tips, djTransfers]);
 
-  const requestTransfer = useCallback((djId: string, amount: number): boolean => {
-    const available = getDJAvailableBalance(djId);
-    if (amount <= 0 || amount > available) return false;
-    const bank = djBankAccounts[djId];
-    if (!bank?.iban || !bank?.holderName) return false;
+  const setDJStripeAccount = useCallback((djId: string, accountId: string) => {
+    setDjStripeAccounts((prev) => {
+      const updated = { ...prev, [djId]: accountId };
+      persist(STORAGE_KEY_CONNECT, updated);
+      return updated;
+    });
+  }, [persist]);
 
+  // Records a payout that has already been created on Stripe (via the backend
+  // /connect/payouts endpoint). Status stays "processing" until the bank payout
+  // settles; a webhook would flip it to "completed" in a server-backed setup.
+  const recordPayout = useCallback((
+    djId: string,
+    amount: number,
+    opts: { destinationLabel: string; stripeTransferId: string },
+  ) => {
     const transfer: DJTransfer = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 6),
       djId,
       amount,
       date: new Date(),
       status: "processing",
-      iban: bank.iban,
+      destinationLabel: opts.destinationLabel,
+      stripeTransferId: opts.stripeTransferId,
     };
 
     setDjTransfers((prev) => {
       const updated = [transfer, ...prev];
       persist(STORAGE_KEY_TRANSFERS, updated);
-      // Simulate completion after 3s
-      setTimeout(() => {
-        setDjTransfers((p) => {
-          const u = p.map((t) => t.id === transfer.id ? { ...t, status: "completed" as TransferStatus } : t);
-          persist(STORAGE_KEY_TRANSFERS, u);
-          return u;
-        });
-      }, 3000);
       return updated;
     });
-
-    return true;
-  }, [getDJAvailableBalance, djBankAccounts, persist]);
+  }, [persist]);
 
   const getTipsForDJ = useCallback((djId: string) => tips.filter((t) => t.djId === djId), [tips]);
   const getPendingTipsForDJ = useCallback((djId: string) => tips.filter((t) => t.djId === djId && t.status === "pending"), [tips]);
@@ -350,14 +366,15 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
   return (
     <TipsContext.Provider value={{
       wallet, tips, djs, selectedDj, isStripeModalVisible, isDJMode, currentDJName, fanProfile,
-      djBankAccounts, djTransfers,
+      djBankAccounts, djStripeAccounts, djTransfers,
       addFunds, sendTip, acceptTip, setSelectedDj,
       openStripeModal: () => setIsStripeModalVisible(true),
       closeStripeModal: () => setIsStripeModalVisible(false),
       toggleDJMode: () => setIsDJMode((p) => !p),
       toggleDJLive,
       setCurrentDJName,
-      updateDJSocialLinks, updateFanProfile, updateDJBankAccount, requestTransfer, getDJAvailableBalance,
+      updateDJSocialLinks, updateFanProfile, updateDJBankAccount,
+      setDJStripeAccount, recordPayout, getDJAvailableBalance,
       getTipsForDJ, getPendingTipsForDJ, getDJBalance, getFavoriteDJs, searchDJs,
     }}>
       {children}
