@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
-import 'core/state/tips_controller.dart';
+import 'core/services/app_bootstrap.dart';
+import 'core/services/tip_payments.dart';
+import 'core/state/remote_tips_controller.dart';
 import 'features/dj/dj_dashboard_page.dart';
 
-void main() {
+/// Provided at build time:
+/// `--dart-define=STRIPE_PUBLISHABLE_KEY=pk_test_...`
+const String kStripePublishableKey =
+    String.fromEnvironment('STRIPE_PUBLISHABLE_KEY');
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AppBootstrap.initialize(stripePublishableKey: kStripePublishableKey);
   runApp(const MoneyPullUpApp());
 }
 
@@ -41,12 +50,41 @@ class MoneyPullUpShell extends StatefulWidget {
 
 class _MoneyPullUpShellState extends State<MoneyPullUpShell> {
   int navIndex = 0;
-  final TipsController _controller = TipsController();
+  final RemoteTipsController _controller = RemoteTipsController();
+  late final String _djId;
+
+  // Cosmetic only under the manual-capture model: the fan now pays per tip via
+  // the Payment Sheet, so there is no prepaid wallet to debit. Kept so the
+  // existing wallet/recharge UI keeps compiling; remove in a dedicated UI pass.
+  int _walletBalance = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Single-device demo: the signed-in (anonymous) user is also the DJ.
+    _djId = AppBootstrap.currentUid;
+    if (_djId.isNotEmpty) {
+      _controller.bindToDj(_djId);
+    }
+  }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<bool> _sendTip(int amount, String message) async {
+    try {
+      final result = await TipPayments.sendTip(
+        djId: _djId,
+        amountEuros: amount,
+        message: message,
+      );
+      return result == TipResult.authorized;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
@@ -60,17 +98,20 @@ class _MoneyPullUpShellState extends State<MoneyPullUpShell> {
             FanPage(
               currentIndex: navIndex,
               onNavChanged: (v) => setState(() => navIndex = v),
-              walletBalance: _controller.walletBalance,
-              onSendTip: (amount, msg) =>
-                  _controller.sendTip(amount: amount, message: msg),
-              onAddFunds: _controller.addFunds,
+              walletBalance: _walletBalance,
+              onSendTip: _sendTip,
+              onAddFunds: (a) => setState(() => _walletBalance += a),
             ),
             DjDashboardPage(
               currentIndex: navIndex,
               onNavChanged: (v) => setState(() => navIndex = v),
               tips: _controller.tips.toList(),
-              onAcceptTip: _controller.acceptTip,
-              onRejectTip: _controller.refuseTip,
+              onAcceptTip: (id) {
+                _controller.acceptTip(id).catchError((Object _) {});
+              },
+              onRejectTip: (id) {
+                _controller.refuseTip(id).catchError((Object _) {});
+              },
             ),
             PlaceholderPage(
               title: 'PROFIL',
@@ -89,7 +130,7 @@ class FanPage extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onNavChanged;
   final int walletBalance;
-  final bool Function(int amount, String message) onSendTip;
+  final Future<bool> Function(int amount, String message) onSendTip;
   final ValueChanged<int> onAddFunds;
 
   const FanPage({
@@ -115,16 +156,16 @@ class _FanPageState extends State<FanPage> {
     super.dispose();
   }
 
-  void _handleSendTip() {
+  Future<void> _handleSendTip() async {
     final msg = messageController.text.trim();
-    final success = widget.onSendTip(selectedTip, msg);
+    final success = await widget.onSendTip(selectedTip, msg);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           success
-              ? '✅ Tip de $selectedTip€ envoyé !'
-              : '❌ Solde insuffisant.',
+              ? '✅ Tip de $selectedTip€ autorisé — en attente du DJ'
+              : '❌ Paiement annulé ou échoué.',
         ),
         duration: const Duration(seconds: 2),
         backgroundColor: success
