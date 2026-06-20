@@ -33,7 +33,9 @@ async function createCheckoutSession(
   // Both share the same base path so a single `returnUrl` closes the in-app
   // browser; the `status` query tells us which outcome occurred.
   const returnUrl = Linking.createURL("wallet/topup");
-  const successUrl = Linking.createURL("wallet/topup", { queryParams: { status: "success" } });
+  const successUrl = Linking.createURL("wallet/topup", {
+    queryParams: { status: "success", amount: String(amount) },
+  });
   const cancelUrl = Linking.createURL("wallet/topup", { queryParams: { status: "cancel" } });
 
   const res = await fetch(`${API_BASE_URL}/api/payments/checkout`, {
