@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Modal,
@@ -16,8 +17,15 @@ import {
 } from "react-native";
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from "react-native-reanimated";
 
-import { BankAccount, DJTransfer, useTips } from "@/contexts/TipsContext";
-import { useColors } from "@/hooks/useColors";
+import { DJTransfer, useTips } from "@/contexts/TipsContext";
+import {
+  AccountStatus,
+  createConnectedAccount,
+  getAccountStatus,
+  requestPayout,
+  startOnboarding,
+} from "@/lib/connect";
+import { PaymentConfigError } from "@/lib/payments";
 
 interface Props {
   visible: boolean;
@@ -37,37 +45,47 @@ function formatDate(d: Date) {
 }
 
 export function DJWalletModal({ visible, onClose, djId }: Props) {
-  const colors = useColors();
   const {
     getDJBalance,
     getDJAvailableBalance,
-    djBankAccounts,
+    djStripeAccounts,
     djTransfers,
-    updateDJBankAccount,
-    requestTransfer,
+    setDJStripeAccount,
+    recordPayout,
   } = useTips();
 
   const [tab, setTab] = useState<Tab>("balance");
-  const [bankDraft, setBankDraft] = useState<BankAccount>({ holderName: "", iban: "", bic: "" });
-  const [bankSaved, setBankSaved] = useState(false);
   const [transferAmount, setTransferAmount] = useState("");
   const [transferSuccess, setTransferSuccess] = useState(false);
+  const [status, setStatus] = useState<AccountStatus | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const balance = getDJBalance(djId);
   const available = getDJAvailableBalance(djId);
   const transferred = balance - available;
-  const bank = djBankAccounts[djId];
+  const accountId = djStripeAccounts[djId];
+  const payoutsEnabled = status?.payoutsEnabled ?? false;
   const transfers = djTransfers.filter((t) => t.djId === djId);
 
-  useEffect(() => {
-    if (bank) setBankDraft(bank);
-  }, [bank]);
+  const refreshStatus = useCallback(async (id: string) => {
+    setLoadingStatus(true);
+    try {
+      setStatus(await getAccountStatus(id));
+    } catch {
+      /* ignore — keep last known status */
+    } finally {
+      setLoadingStatus(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (visible) {
       setTab("balance");
       setTransferSuccess(false);
       setTransferAmount(available > 0 ? available.toFixed(2) : "");
+      if (accountId) refreshStatus(accountId);
+      else setStatus(null);
     }
   }, [visible]);
 
@@ -75,43 +93,68 @@ export function DJWalletModal({ visible, onClose, djId }: Props) {
     setTransferAmount(available > 0 ? available.toFixed(2) : "");
   }, [available]);
 
-  const handleSaveBank = useCallback(() => {
-    if (!bankDraft.holderName.trim() || !bankDraft.iban.trim()) {
-      Alert.alert("Champs requis", "Veuillez renseigner le titulaire et l'IBAN.");
-      return;
+  const handleConnect = useCallback(async () => {
+    setBusy(true);
+    try {
+      let id = accountId;
+      if (!id) {
+        id = await createConnectedAccount(djId);
+        setDJStripeAccount(djId, id);
+      }
+      const result = await startOnboarding(id);
+      if (result === "returned") await refreshStatus(id);
+      if (Platform.OS !== "web") Haptics.selectionAsync();
+    } catch (err) {
+      Alert.alert(
+        "Erreur",
+        err instanceof PaymentConfigError
+          ? "Les paiements ne sont pas configurés. Réessayez plus tard."
+          : "Impossible d'ouvrir la configuration Stripe.",
+      );
+    } finally {
+      setBusy(false);
     }
-    const cleanIban = bankDraft.iban.replace(/\s/g, "").toUpperCase();
-    updateDJBankAccount(djId, { ...bankDraft, iban: cleanIban });
-    setBankSaved(true);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setTimeout(() => setBankSaved(false), 2500);
-  }, [bankDraft, djId, updateDJBankAccount]);
+  }, [accountId, djId, setDJStripeAccount, refreshStatus]);
 
-  const handleTransfer = useCallback(() => {
+  const handleTransfer = useCallback(async () => {
     const amt = parseFloat(transferAmount);
-    if (!bank?.iban || !bank?.holderName) {
-      Alert.alert("Compte manquant", "Veuillez d'abord renseigner vos coordonnées bancaires.", [
-        { text: "Configurer", onPress: () => setTab("bank") },
-      ]);
+    if (!accountId || !payoutsEnabled) {
+      Alert.alert(
+        "Compte non configuré",
+        "Configurez d'abord vos paiements Stripe pour recevoir des virements.",
+        [{ text: "Configurer", onPress: () => setTab("bank") }],
+      );
       return;
     }
     if (!amt || amt <= 0 || amt > available) {
       Alert.alert("Montant invalide", `Montant disponible : ${available.toFixed(2)}€`);
       return;
     }
-    const ok = requestTransfer(djId, amt);
-    if (ok) {
+    setBusy(true);
+    try {
+      const transferId = await requestPayout(accountId, amt);
+      recordPayout(djId, amt, { destinationLabel: "Compte Stripe", stripeTransferId: transferId });
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTransferSuccess(true);
       setTimeout(() => setTransferSuccess(false), 3000);
+    } catch {
+      Alert.alert("Virement échoué", "Le virement n'a pas pu être effectué. Réessayez plus tard.");
+    } finally {
+      setBusy(false);
     }
-  }, [transferAmount, bank, available, djId, requestTransfer]);
+  }, [transferAmount, accountId, payoutsEnabled, available, djId, recordPayout]);
 
   const TABS: { key: Tab; label: string; icon: string }[] = [
     { key: "balance", label: "Solde", icon: "wallet" },
-    { key: "bank", label: "Compte", icon: "bank" },
+    { key: "bank", label: "Paiements", icon: "bank" },
     { key: "history", label: "Historique", icon: "history" },
   ];
+
+  const connectLabel = payoutsEnabled
+    ? "Mettre à jour mes informations"
+    : accountId
+      ? "Continuer la configuration"
+      : "Configurer avec Stripe";
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -170,21 +213,21 @@ export function DJWalletModal({ visible, onClose, djId }: Props) {
                   {/* Transfer form */}
                   <Text style={styles.sectionTitle}>Initier un virement</Text>
 
-                  {bank?.iban ? (
+                  {payoutsEnabled ? (
                     <View style={[styles.bankPreviewRow, { backgroundColor: "#f0fdf4", borderColor: "#22C55E44" }]}>
-                      <MaterialCommunityIcons name="bank-check" size={18} color="#22C55E" />
+                      <MaterialCommunityIcons name="check-decagram" size={18} color="#22C55E" />
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.bankPreviewName}>{bank.holderName}</Text>
-                        <Text style={styles.bankPreviewIban}>{maskIban(bank.iban)}</Text>
+                        <Text style={styles.bankPreviewName}>Compte Stripe connecté</Text>
+                        <Text style={styles.bankPreviewIban}>Virements activés</Text>
                       </View>
                       <TouchableOpacity onPress={() => setTab("bank")}>
-                        <Feather name="edit-2" size={14} color="#22C55E" />
+                        <Feather name="settings" size={14} color="#22C55E" />
                       </TouchableOpacity>
                     </View>
                   ) : (
                     <TouchableOpacity onPress={() => setTab("bank")} style={[styles.noBankBtn, { borderColor: "#F59E0B" }]}>
                       <Feather name="alert-circle" size={16} color="#F59E0B" />
-                      <Text style={[styles.noBankText, { color: "#F59E0B" }]}>Configurer un compte bancaire</Text>
+                      <Text style={[styles.noBankText, { color: "#F59E0B" }]}>Configurer les paiements Stripe</Text>
                       <Feather name="chevron-right" size={16} color="#F59E0B" />
                     </TouchableOpacity>
                   )}
@@ -201,11 +244,13 @@ export function DJWalletModal({ visible, onClose, djId }: Props) {
                         style={styles.transferInput}
                       />
                     </View>
-                    <TouchableOpacity onPress={handleTransfer} style={[styles.transferBtn, { opacity: available > 0 ? 1 : 0.45 }]}>
+                    <TouchableOpacity onPress={handleTransfer} disabled={busy} style={[styles.transferBtn, { opacity: available > 0 && !busy ? 1 : 0.45 }]}>
                       <LinearGradient colors={transferSuccess ? ["#22C55E", "#16a34a"] : ["#7C3AED", "#5B11CC"]} style={styles.transferBtnGrad}>
-                        {transferSuccess
-                          ? <Feather name="check-circle" size={18} color="#fff" />
-                          : <MaterialCommunityIcons name="bank-transfer-out" size={20} color="#fff" />
+                        {busy
+                          ? <ActivityIndicator color="#fff" />
+                          : transferSuccess
+                            ? <Feather name="check-circle" size={18} color="#fff" />
+                            : <MaterialCommunityIcons name="bank-transfer-out" size={20} color="#fff" />
                         }
                         <Text style={styles.transferBtnText}>{transferSuccess ? "Envoyé !" : "Virer"}</Text>
                       </LinearGradient>
@@ -215,68 +260,50 @@ export function DJWalletModal({ visible, onClose, djId }: Props) {
                   {transferSuccess && (
                     <View style={[styles.successBanner, { backgroundColor: "#f0fdf4", borderColor: "#22C55E" }]}>
                       <Feather name="check-circle" size={16} color="#22C55E" />
-                      <Text style={[styles.successText, { color: "#22C55E" }]}>Virement en cours de traitement (2–3 jours ouvrés)</Text>
+                      <Text style={[styles.successText, { color: "#22C55E" }]}>Virement Stripe initié — versement sous 2–3 jours ouvrés</Text>
                     </View>
                   )}
                 </Animated.View>
               )}
 
-              {/* BANK TAB */}
+              {/* PAYMENTS (STRIPE CONNECT) TAB */}
               {tab === "bank" && (
                 <Animated.View entering={FadeIn.duration(200)} style={{ gap: 14 }}>
-                  <Text style={styles.sectionTitle}>Coordonnées bancaires</Text>
-                  <Text style={styles.sectionSub}>Ces informations sont utilisées pour virer vos tips vers votre compte.</Text>
+                  <Text style={styles.sectionTitle}>Paiements Stripe</Text>
+                  <Text style={styles.sectionSub}>Connectez un compte Stripe pour recevoir vos tips directement sur votre banque.</Text>
 
-                  <View style={styles.fieldWrap}>
-                    <Text style={styles.fieldLabel}>Titulaire du compte</Text>
-                    <TextInput
-                      value={bankDraft.holderName}
-                      onChangeText={(v) => setBankDraft((p) => ({ ...p, holderName: v }))}
-                      placeholder="Prénom NOM"
-                      placeholderTextColor="#9ca3af"
-                      style={styles.field}
-                      autoCapitalize="words"
-                    />
-                  </View>
+                  {loadingStatus ? (
+                    <View style={styles.statusLoading}>
+                      <ActivityIndicator color="#7C3AED" />
+                    </View>
+                  ) : payoutsEnabled ? (
+                    <View style={[styles.connectedCard, { backgroundColor: "#f0fdf4", borderColor: "#22C55E44" }]}>
+                      <MaterialCommunityIcons name="check-decagram" size={28} color="#22C55E" />
+                      <Text style={styles.connectedTitle}>Compte Stripe connecté</Text>
+                      <Text style={styles.connectedSub}>Vos virements sont activés.</Text>
+                    </View>
+                  ) : accountId ? (
+                    <View style={[styles.connectedCard, { backgroundColor: "#fffbeb", borderColor: "#F59E0B44" }]}>
+                      <MaterialCommunityIcons name="progress-clock" size={28} color="#F59E0B" />
+                      <Text style={styles.connectedTitle}>Configuration incomplète</Text>
+                      <Text style={styles.connectedSub}>Terminez la vérification pour activer les virements.</Text>
+                    </View>
+                  ) : null}
 
-                  <View style={styles.fieldWrap}>
-                    <Text style={styles.fieldLabel}>IBAN</Text>
-                    <TextInput
-                      value={bankDraft.iban}
-                      onChangeText={(v) => setBankDraft((p) => ({ ...p, iban: v.toUpperCase() }))}
-                      placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
-                      placeholderTextColor="#9ca3af"
-                      style={[styles.field, styles.fieldMono]}
-                      autoCapitalize="characters"
-                    />
-                  </View>
-
-                  <View style={styles.fieldWrap}>
-                    <Text style={styles.fieldLabel}>BIC / SWIFT</Text>
-                    <TextInput
-                      value={bankDraft.bic}
-                      onChangeText={(v) => setBankDraft((p) => ({ ...p, bic: v.toUpperCase() }))}
-                      placeholder="BNPAFRPPXXX"
-                      placeholderTextColor="#9ca3af"
-                      style={[styles.field, styles.fieldMono]}
-                      autoCapitalize="characters"
-                    />
-                  </View>
-
-                  <TouchableOpacity onPress={handleSaveBank} style={styles.saveBankBtn}>
-                    <LinearGradient colors={bankSaved ? ["#22C55E", "#16a34a"] : ["#7C3AED", "#5B11CC"]} style={styles.saveBankGrad}>
-                      {bankSaved
-                        ? <Feather name="check-circle" size={18} color="#fff" />
-                        : <Feather name="save" size={18} color="#fff" />
+                  <TouchableOpacity onPress={handleConnect} disabled={busy} style={styles.saveBankBtn}>
+                    <LinearGradient colors={["#635BFF", "#4B45D6"]} style={styles.saveBankGrad}>
+                      {busy
+                        ? <ActivityIndicator color="#fff" />
+                        : <MaterialCommunityIcons name="bank-outline" size={18} color="#fff" />
                       }
-                      <Text style={styles.saveBankText}>{bankSaved ? "Enregistré !" : "Enregistrer"}</Text>
+                      <Text style={styles.saveBankText}>{connectLabel}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
 
-                  <View style={[styles.securityNote, { backgroundColor: "#fefce8", borderColor: "#fcd34d" }]}>
-                    <Feather name="shield" size={14} color="#d97706" />
-                    <Text style={[styles.securityText, { color: "#92400e" }]}>
-                      Ces données sont stockées localement et ne sont jamais transmises sans votre accord.
+                  <View style={[styles.securityNote, { backgroundColor: "#eef2ff", borderColor: "#c7d2fe" }]}>
+                    <Feather name="shield" size={14} color="#4338ca" />
+                    <Text style={[styles.securityText, { color: "#3730a3" }]}>
+                      Vos informations bancaires sont collectées et sécurisées directement par Stripe. L'application n'y a jamais accès.
                     </Text>
                   </View>
                 </Animated.View>
@@ -320,12 +347,15 @@ function TransferRow({ transfer }: { transfer: DJTransfer }) {
     failed: "Échoué",
   };
 
+  const destination =
+    transfer.destinationLabel ?? (transfer.iban ? maskIban(transfer.iban) : "Compte Stripe");
+
   return (
     <View style={trStyles.row}>
       <View style={[trStyles.statusDot, { backgroundColor: statusColor[transfer.status] }]} />
       <View style={{ flex: 1 }}>
         <Text style={trStyles.amount}>+{transfer.amount.toFixed(2)}€</Text>
-        <Text style={trStyles.iban}>{maskIban(transfer.iban)}</Text>
+        <Text style={trStyles.iban}>{destination}</Text>
         <Text style={trStyles.date}>{formatDate(transfer.date)}</Text>
       </View>
       <View style={[trStyles.badge, { backgroundColor: statusColor[transfer.status] + "22", borderColor: statusColor[transfer.status] + "55" }]}>
@@ -396,10 +426,10 @@ const styles = StyleSheet.create({
   successBanner: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 12 },
   successText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
 
-  fieldWrap: { gap: 6 },
-  fieldLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#374151" },
-  field: { backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, fontFamily: "Inter_400Regular", color: "#111827" },
-  fieldMono: { fontFamily: "Inter_500Medium", letterSpacing: 0.5 },
+  statusLoading: { alignItems: "center", paddingVertical: 24 },
+  connectedCard: { alignItems: "center", gap: 4, borderWidth: 1, borderRadius: 16, paddingVertical: 22, paddingHorizontal: 16 },
+  connectedTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#111827", marginTop: 4 },
+  connectedSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#6b7280", textAlign: "center" },
 
   saveBankBtn: { borderRadius: 14, overflow: "hidden", marginTop: 4 },
   saveBankGrad: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14 },
