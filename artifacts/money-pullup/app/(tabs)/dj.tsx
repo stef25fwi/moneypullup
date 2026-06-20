@@ -118,6 +118,7 @@ export default function DJScreen() {
   const acceptedCount = djWallet.active ? djWallet.count : acceptedTips.length;
   const avgTip = acceptedCount > 0 ? myBalance / acceptedCount : 0;
   const biggestTip = acceptedTips.length > 0 ? Math.max(...acceptedTips.map((t) => t.amount)) : 0;
+  const recordTip = djWallet.active ? djWallet.biggest : biggestTip;
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
 
@@ -241,13 +242,15 @@ export default function DJScreen() {
           <View style={styles.balanceTop}>
             <View>
               <Text style={[styles.balanceLabel, { color: colors.mutedForeground }]}>Total accepté ce soir</Text>
-              <Text style={[styles.balanceAmount, { color: colors.gold }]}>{myBalance.toFixed(2)}€</Text>
+              <Text style={[styles.balanceAmount, { color: colors.gold }]}>
+                {(djWallet.active ? djWallet.tonightReceived : myBalance).toFixed(2)}€
+              </Text>
             </View>
             <MaterialCommunityIcons name="cash-multiple" size={40} color={colors.gold} style={{ opacity: 0.6 }} />
           </View>
           <View style={[styles.statsRow, { borderTopColor: colors.glassBorder, borderTopWidth: 1 }]}>
             <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.primary }]}>{acceptedTips.length}</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{acceptedCount}</Text>
               <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Acceptés</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.glassBorder }]} />
@@ -257,7 +260,7 @@ export default function DJScreen() {
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.glassBorder }]} />
             <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.neonPink }]}>{biggestTip > 0 ? `${biggestTip}€` : "—"}</Text>
+              <Text style={[styles.statValue, { color: colors.neonPink }]}>{recordTip > 0 ? `${recordTip}€` : "—"}</Text>
               <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Record</Text>
             </View>
           </View>

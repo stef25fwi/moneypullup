@@ -11,6 +11,8 @@ export interface DjWallet {
   totalReceived: number;
   /** Tips received tonight (since 00:00 today), in euros — the "soirée" figure. */
   tonightReceived: number;
+  /** Largest single captured tip, in euros. */
+  biggest: number;
   /** Number of captured tips. */
   count: number;
 }
@@ -54,10 +56,12 @@ export function useDjWallet(): DjWallet {
     const since = startOfToday();
     let total = 0;
     let tonight = 0;
+    let biggest = 0;
     for (const tip of tips) {
       total += tip.amount;
       if (tip.createdAt.getTime() >= since) tonight += tip.amount;
+      if (tip.amount > biggest) biggest = tip.amount;
     }
-    return { active, totalReceived: total, tonightReceived: tonight, count: tips.length };
+    return { active, totalReceived: total, tonightReceived: tonight, biggest, count: tips.length };
   }, [active, tips]);
 }

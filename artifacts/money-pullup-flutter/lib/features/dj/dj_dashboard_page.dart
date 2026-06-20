@@ -115,6 +115,31 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
             t.createdAt.month == now.month &&
             t.createdAt.day == now.day)
         .toList();
+    final todayAmount = receivedToday.fold<int>(0, (sum, t) => sum + t.amount);
+    final weekStart = now.subtract(const Duration(days: 7));
+    final prevWeekStart = now.subtract(const Duration(days: 14));
+    final weekReceived = received
+        .where((t) => t.createdAt.isAfter(weekStart))
+        .fold<int>(0, (sum, t) => sum + t.amount);
+    final prevWeekReceived = received
+        .where((t) =>
+            t.createdAt.isAfter(prevWeekStart) &&
+            !t.createdAt.isAfter(weekStart))
+        .fold<int>(0, (sum, t) => sum + t.amount);
+    final supporters = received.map((t) => t.fanName).toSet().length;
+    final todaySupporters = receivedToday.map((t) => t.fanName).toSet().length;
+    final fanTotals = <String, int>{};
+    for (final t in received) {
+      fanTotals[t.fanName] = (fanTotals[t.fanName] ?? 0) + t.amount;
+    }
+    var topFanName = '—';
+    var topFanAmount = 0;
+    fanTotals.forEach((name, amount) {
+      if (amount > topFanAmount) {
+        topFanAmount = amount;
+        topFanName = name;
+      }
+    });
 
     return Scaffold(
       backgroundColor: kDjBg,
@@ -184,9 +209,27 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
                       child: DjSectionTitle("APERÇU AUJOURD'HUI"),
                     ),
                     const SizedBox(height: 12),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 18),
-                      child: DjOverviewRow(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: DjOverviewRow(
+                        totalValue: _fmtEuro(totalReceived),
+                        totalDelta:
+                            todayAmount > 0 ? '+$todayAmount € ce soir' : '—',
+                        totalDeltaColor: todayAmount > 0
+                            ? kDjGreen
+                            : const Color(0xFF8A849D),
+                        weekValue: _fmtEuro(weekReceived),
+                        weekDelta:
+                            _weekDeltaLabel(weekReceived, prevWeekReceived),
+                        weekDeltaColor: weekReceived >= prevWeekReceived
+                            ? kDjGreen
+                            : kDjRed,
+                        supportersValue: '$todaySupporters',
+                        supportersDelta: '$supporters au total',
+                        supportersDeltaColor: const Color(0xFF8A849D),
+                        topFanName: topFanName,
+                        topFanAmount: _fmtEuro(topFanAmount),
+                      ),
                     ),
                   ],
                 ),
@@ -439,6 +482,13 @@ class DjHeroHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Week-over-week delta label ("+12% vs sem.", "nouveau", or "—").
+String _weekDeltaLabel(int current, int previous) {
+  if (previous <= 0) return current > 0 ? 'nouveau' : '—';
+  final pct = ((current - previous) / previous * 100).round();
+  return '${pct >= 0 ? '+' : ''}$pct% vs sem.';
 }
 
 /// Formats euros as "1 245,00 €" (thin-space thousands, comma decimal).
@@ -1122,11 +1172,36 @@ class AutoMessageCard extends StatelessWidget {
 }
 
 class DjOverviewRow extends StatelessWidget {
-  const DjOverviewRow({super.key});
+  final String totalValue;
+  final String totalDelta;
+  final Color totalDeltaColor;
+  final String weekValue;
+  final String weekDelta;
+  final Color weekDeltaColor;
+  final String supportersValue;
+  final String supportersDelta;
+  final Color supportersDeltaColor;
+  final String topFanName;
+  final String topFanAmount;
+
+  const DjOverviewRow({
+    super.key,
+    required this.totalValue,
+    required this.totalDelta,
+    required this.totalDeltaColor,
+    required this.weekValue,
+    required this.weekDelta,
+    required this.weekDeltaColor,
+    required this.supportersValue,
+    required this.supportersDelta,
+    required this.supportersDeltaColor,
+    required this.topFanName,
+    required this.topFanAmount,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const IntrinsicHeight(
+    return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1134,34 +1209,34 @@ class DjOverviewRow extends StatelessWidget {
             child: DjOverviewCard(
               icon: Icons.trending_up,
               label: 'Tips totaux',
-              value: '1 280 €',
-              delta: '+8% vs hier',
-              deltaColor: kDjGreen,
+              value: totalValue,
+              delta: totalDelta,
+              deltaColor: totalDeltaColor,
             ),
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: DjOverviewCard(
               icon: Icons.euro,
               label: 'Cette semaine',
-              value: '982 €',
-              delta: '-3% vs hier',
-              deltaColor: kDjRed,
+              value: weekValue,
+              delta: weekDelta,
+              deltaColor: weekDeltaColor,
             ),
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: DjOverviewCard(
               icon: Icons.group_outlined,
               label: 'Nouveaux supporters',
-              value: '24',
-              delta: '+6 vs hier',
-              deltaColor: kDjGreen,
+              value: supportersValue,
+              delta: supportersDelta,
+              deltaColor: supportersDeltaColor,
             ),
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
-            child: DjTopFanCard(name: 'Maxime', amount: '71 €'),
+            child: DjTopFanCard(name: topFanName, amount: topFanAmount),
           ),
         ],
       ),
