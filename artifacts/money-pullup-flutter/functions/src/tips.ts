@@ -61,13 +61,44 @@ export const createTipPaymentIntent = onCall(async (req) => {
     applicationFeeCents: fee,
     currency: "eur",
     message,
-    status: "requires_capture",
+    status: "awaiting_payment",
     stripePaymentIntentId: paymentIntent.id,
     createdAt: now,
     updatedAt: now,
   });
 
   return { tipId: tipRef.id, clientSecret: paymentIntent.client_secret };
+});
+
+/**
+ * Called by the fan right after the Payment Sheet succeeds. Verifies with Stripe
+ * that the PaymentIntent is authorised (requires_capture) and only then makes the
+ * tip visible to the DJ. The webhook does the same as a backstop, so the DJ sees
+ * the tip the instant payment is authorised — never before.
+ */
+export const confirmTip = onCall(async (req) => {
+  const uid = requireUid(req);
+  const tipId = typeof req.data?.tipId === "string" ? req.data.tipId : "";
+  if (!tipId) throw new HttpsError("invalid-argument", "tipId is required.");
+
+  const ref = db().collection("tips").doc(tipId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Unknown tip.");
+  const tip = snap.data() as FirebaseFirestore.DocumentData;
+  if (tip.fanUid !== uid) throw new HttpsError("permission-denied", "Not your tip.");
+  if (tip.status === "requires_capture" || tip.status === "captured") {
+    return { status: tip.status };
+  }
+
+  const pi = await getStripe().paymentIntents.retrieve(tip.stripePaymentIntentId);
+  if (pi.status === "requires_capture") {
+    await ref.set(
+      { status: "requires_capture", updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+    return { status: "requires_capture" };
+  }
+  return { status: tip.status };
 });
 
 async function loadOwnedTip(tipId: string, uid: string) {

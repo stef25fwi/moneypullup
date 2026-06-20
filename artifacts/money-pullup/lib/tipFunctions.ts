@@ -20,6 +20,10 @@ export function createTipPaymentIntent(args: {
   return call<typeof args, TipIntent>("createTipPaymentIntent", args);
 }
 
+export function confirmTip(tipId: string): Promise<{ status: string }> {
+  return call<{ tipId: string }, { status: string }>("confirmTip", { tipId });
+}
+
 export function acceptTip(tipId: string): Promise<{ status: string }> {
   return call<{ tipId: string }, { status: string }>("acceptTip", { tipId });
 }

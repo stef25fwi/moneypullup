@@ -37,6 +37,12 @@ class TipPayments {
 
     try {
       await Stripe.instance.presentPaymentSheet();
+      // Payment authorised: surface the tip to the DJ now (webhook is the backstop).
+      try {
+        await FunctionsApi.instance.confirmTip(intent.tipId);
+      } catch (_) {
+        // Non-fatal: the Stripe webhook will flip the status as a fallback.
+      }
       return TipResult.authorized;
     } on StripeException catch (e) {
       if (e.error.code == FailureCode.Canceled) return TipResult.cancelled;
