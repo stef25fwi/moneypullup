@@ -374,6 +374,8 @@ export default function DJScreen() {
           </View>
         )}
       </ScrollView>
+
+      <DJWalletModal visible={walletOpen} onClose={() => setWalletOpen(false)} djId={activeDJId} />
     </View>
   );
 }
