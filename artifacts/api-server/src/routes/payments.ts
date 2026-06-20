@@ -7,6 +7,7 @@ import {
   getWebhookSecret,
   StripeNotConfiguredError,
 } from "../lib/stripe";
+import { creditWallet, getWalletBalance, isDbConfigured } from "../lib/wallet";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -96,7 +97,7 @@ router.post("/payments/checkout", async (req: Request, res: Response) => {
  * Stripe webhook endpoint. Mounted with a raw body parser in `app.ts` so the
  * signature can be verified. This is the source of truth for crediting wallets.
  */
-router.post("/payments/webhook", (req: Request, res: Response) => {
+router.post("/payments/webhook", async (req: Request, res: Response) => {
   const signature = req.headers["stripe-signature"];
   if (typeof signature !== "string") {
     res.status(400).json({ error: "missing_signature" });
@@ -118,16 +119,54 @@ router.post("/payments/webhook", (req: Request, res: Response) => {
     const session = event.data.object;
     const amountCents = Number(session.metadata?.["amount_cents"] ?? session.amount_total ?? 0);
     const walletId = session.metadata?.["wallet_id"];
-    logger.info(
-      { sessionId: session.id, amountCents, walletId },
-      "Wallet top-up paid — credit the wallet here",
-    );
-    // TODO: persist the credit to the wallet (e.g. via @workspace/db) using
-    // walletId + amountCents. Kept side-effect-free until a server-side wallet
-    // model exists; the app currently mirrors the balance optimistically.
+
+    if (walletId && amountCents > 0 && isDbConfigured()) {
+      try {
+        const credited = await creditWallet({ ref: session.id, walletId, amountCents });
+        logger.info(
+          { sessionId: session.id, walletId, amountCents, credited },
+          credited ? "Wallet credited" : "Top-up already processed (idempotent)",
+        );
+      } catch (err) {
+        // Return 5xx so Stripe retries; creditWallet is idempotent.
+        logger.error({ err, sessionId: session.id }, "Failed to credit wallet");
+        res.status(500).json({ error: "wallet_credit_failed" });
+        return;
+      }
+    } else {
+      logger.info(
+        { sessionId: session.id, walletId, amountCents, dbConfigured: isDbConfigured() },
+        "Top-up paid — not persisted (no walletId or DB not configured)",
+      );
+    }
   }
 
   res.json({ received: true });
+});
+
+/** Returns the authoritative (server-side) balance for a wallet. */
+router.get("/wallet/:walletId/balance", async (req: Request, res: Response) => {
+  if (!isDbConfigured()) {
+    res.status(503).json({ error: "db_not_configured" });
+    return;
+  }
+  const walletId = req.params["walletId"];
+  if (typeof walletId !== "string" || walletId.length === 0) {
+    res.status(400).json({ error: "invalid_wallet_id" });
+    return;
+  }
+
+  try {
+    const wallet = await getWalletBalance(walletId);
+    res.json({
+      walletId,
+      balanceCents: wallet?.balanceCents ?? 0,
+      currency: wallet?.currency ?? "eur",
+    });
+  } catch (err) {
+    logger.error({ err, walletId }, "Failed to read wallet balance");
+    res.status(500).json({ error: "wallet_read_failed" });
+  }
 });
 
 export default router;
