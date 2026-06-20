@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTips } from "@/contexts/TipsContext";
+import { PaymentConfigError, startWalletTopUp } from "@/lib/payments";
 
 const FUND_AMOUNTS = [10, 20, 50, 100];
 
@@ -35,18 +36,36 @@ export function StripeModal({ visible, onClose }: StripeModalProps) {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    await new Promise((resolve) => setTimeout(resolve, 1400));
-    addFunds(selectedAmount);
-    setIsProcessing(false);
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    try {
+      const result = await startWalletTopUp(selectedAmount);
+
+      if (result === "success") {
+        // The wallet is credited authoritatively by the Stripe webhook; we
+        // optimistically reflect the new balance for immediate feedback.
+        addFunds(selectedAmount);
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        onClose();
+        Alert.alert(
+          "Rechargement réussi",
+          `${selectedAmount}€ ajoutés à votre portefeuille !`,
+          [{ text: "Super !" }]
+        );
+      } else if (result === "cancelled") {
+        Alert.alert("Paiement annulé", "Aucun montant n'a été débité.");
+      }
+      // "dismissed" (e.g. web redirect or closed sheet): stay silent.
+    } catch (err) {
+      const message =
+        err instanceof PaymentConfigError
+          ? "Le paiement n'est pas configuré. Veuillez réessayer plus tard."
+          : "Le paiement a échoué. Veuillez réessayer.";
+      Alert.alert("Erreur de paiement", message);
+    } finally {
+      setIsProcessing(false);
     }
-    onClose();
-    Alert.alert(
-      "Rechargement réussi",
-      `${selectedAmount}€ ajoutés à votre portefeuille !`,
-      [{ text: "Super !" }]
-    );
   }, [selectedAmount, addFunds, onClose]);
 
   return (
@@ -130,12 +149,9 @@ export function StripeModal({ visible, onClose }: StripeModalProps) {
               { backgroundColor: colors.secondary, borderColor: colors.border },
             ]}
           >
-            <Feather name="credit-card" size={18} color={colors.mutedForeground} />
+            <Feather name="lock" size={18} color={colors.mutedForeground} />
             <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
-              •••• •••• •••• 4242
-            </Text>
-            <Text style={[styles.cardBrand, { color: colors.mutedForeground }]}>
-              VISA
+              Paiement par carte via la page sécurisée Stripe
             </Text>
           </View>
 
