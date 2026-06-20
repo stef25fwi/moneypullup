@@ -26,6 +26,7 @@ import {
   startOnboarding,
 } from "@/lib/connect";
 import { PaymentConfigError } from "@/lib/payments";
+import { useDjWallet } from "@/hooks/useDjWallet";
 
 interface Props {
   visible: boolean;
@@ -61,8 +62,10 @@ export function DJWalletModal({ visible, onClose, djId }: Props) {
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const balance = getDJBalance(djId);
-  const available = getDJAvailableBalance(djId);
+  const djWallet = useDjWallet();
+  // Real total of captured tips when the backend is configured.
+  const balance = djWallet.active ? djWallet.totalReceived : getDJBalance(djId);
+  const available = djWallet.active ? djWallet.totalReceived : getDJAvailableBalance(djId);
   const transferred = balance - available;
   const accountId = djStripeAccounts[djId];
   const payoutsEnabled = status?.payoutsEnabled ?? false;
@@ -200,6 +203,13 @@ export function DJWalletModal({ visible, onClose, djId }: Props) {
                       <Text style={[styles.balanceCardValue, { color: "#22C55E" }]}>{available.toFixed(2)}€</Text>
                     </LinearGradient>
                   </View>
+
+                  {djWallet.active && (
+                    <View style={[styles.transferredRow, { backgroundColor: "#FFF7E6" }]}>
+                      <MaterialCommunityIcons name="party-popper" size={16} color="#B8860B" />
+                      <Text style={styles.transferredText}>Ce soir : {djWallet.tonightReceived.toFixed(2)}€</Text>
+                    </View>
+                  )}
 
                   {transferred > 0 && (
                     <View style={[styles.transferredRow, { backgroundColor: "#f3f4f6" }]}>

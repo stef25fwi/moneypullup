@@ -105,6 +105,16 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final pending = pendingTips;
+    final received =
+        widget.tips.where((t) => t.status == TipStatus.accepted).toList();
+    final totalReceived = received.fold<int>(0, (sum, t) => sum + t.amount);
+    final now = DateTime.now();
+    final receivedToday = received
+        .where((t) =>
+            t.createdAt.year == now.year &&
+            t.createdAt.month == now.month &&
+            t.createdAt.day == now.day)
+        .toList();
 
     return Scaffold(
       backgroundColor: kDjBg,
@@ -128,7 +138,12 @@ class _DjDashboardPageState extends State<DjDashboardPage> {
                   padding: const EdgeInsets.only(bottom: 16),
                   physics: const BouncingScrollPhysics(),
                   children: [
-                    DjHeroWithStats(pendingCount: pending.length),
+                    DjHeroWithStats(
+                      pendingCount: pending.length,
+                      walletLabel: _fmtEuro(totalReceived),
+                      tipsTodayCount: receivedToday.length,
+                      acceptedCount: received.length,
+                    ),
                     const SizedBox(height: 20),
                     DjPendingHeader(count: pending.length),
                     const SizedBox(height: 12),
@@ -236,8 +251,17 @@ class DjGlowBlob extends StatelessWidget {
 
 class DjHeroWithStats extends StatelessWidget {
   final int pendingCount;
+  final String walletLabel;
+  final int tipsTodayCount;
+  final int acceptedCount;
 
-  const DjHeroWithStats({super.key, required this.pendingCount});
+  const DjHeroWithStats({
+    super.key,
+    required this.pendingCount,
+    required this.walletLabel,
+    required this.tipsTodayCount,
+    required this.acceptedCount,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -259,14 +283,19 @@ class DjHeroWithStats extends StatelessWidget {
             child: DjHeroHeader(
                 heroHeight: heroHeight,
                 topInset: topInset,
-                walletLabel: '1 245,80 €'),
+                walletLabel: walletLabel),
           ),
           Positioned(
             left: 18,
             right: 18,
             bottom: 0,
             height: statsHeight,
-            child: DjStatsBar(pendingCount: pendingCount),
+            child: DjStatsBar(
+              pendingCount: pendingCount,
+              walletLabel: walletLabel,
+              tipsTodayCount: tipsTodayCount,
+              acceptedCount: acceptedCount,
+            ),
           ),
         ],
       ),
@@ -412,10 +441,33 @@ class DjHeroHeader extends StatelessWidget {
   }
 }
 
+/// Formats euros as "1 245,00 €" (thin-space thousands, comma decimal).
+String _fmtEuro(num value) {
+  final fixed = value.toStringAsFixed(2);
+  final dotIndex = fixed.indexOf('.');
+  final intPart = fixed.substring(0, dotIndex);
+  final decPart = fixed.substring(dotIndex + 1);
+  final buffer = StringBuffer();
+  for (var i = 0; i < intPart.length; i++) {
+    if (i > 0 && (intPart.length - i) % 3 == 0) buffer.write(' ');
+    buffer.write(intPart[i]);
+  }
+  return '$buffer,$decPart €';
+}
+
 class DjStatsBar extends StatelessWidget {
   final int pendingCount;
+  final String walletLabel;
+  final int tipsTodayCount;
+  final int acceptedCount;
 
-  const DjStatsBar({super.key, required this.pendingCount});
+  const DjStatsBar({
+    super.key,
+    required this.pendingCount,
+    required this.walletLabel,
+    required this.tipsTodayCount,
+    required this.acceptedCount,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -428,12 +480,12 @@ class DjStatsBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: DjStatCell(
               icon: Icons.card_giftcard,
               iconColor: kDjPink,
               label: 'Tips reçus',
-              value: '128',
+              value: '$tipsTodayCount',
               valueColor: Colors.white,
               sub: "aujourd'hui",
             ),
@@ -449,22 +501,22 @@ class DjStatsBar extends StatelessWidget {
             ),
           ),
           const DjStatDivider(),
-          const Expanded(
+          Expanded(
             child: DjStatCell(
               icon: Icons.check_circle_outline,
               iconColor: kDjCyan,
               label: 'Acceptés',
-              value: '116',
+              value: '$acceptedCount',
               valueColor: Colors.white,
             ),
           ),
           const DjStatDivider(),
-          const Expanded(
+          Expanded(
             child: DjStatCell(
               icon: Icons.account_balance_wallet_outlined,
               iconColor: kDjPink,
               label: 'Solde wallet',
-              value: '1 245,80 €',
+              value: walletLabel,
               valueColor: Colors.white,
               valueSize: 15,
             ),

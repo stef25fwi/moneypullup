@@ -31,6 +31,7 @@ import { useTips, SocialLinks, Tip } from "@/contexts/TipsContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
 import { useDjInbox } from "@/hooks/useDjInbox";
+import { useDjWallet } from "@/hooks/useDjWallet";
 
 function AcceptTipCard({ tip, onAccept }: { tip: Tip; onAccept: (id: string) => void }) {
   const colors = useColors();
@@ -97,6 +98,7 @@ export default function DJScreen() {
     acceptTip, updateDJSocialLinks, toggleDJLive,
   } = useTips();
   const inbox = useDjInbox();
+  const djWallet = useDjWallet();
 
   const [activeDJId, setActiveDJId] = useState("dj1");
   const [editingName, setEditingName] = useState(false);
@@ -111,8 +113,10 @@ export default function DJScreen() {
   const pendingTips = inbox.active ? inbox.pendingTips : getPendingTipsForDJ(activeDJId);
   const handleAcceptTip = inbox.active ? inbox.accept : acceptTip;
   const acceptedTips = myTips.filter((t) => t.status === "accepted");
-  const myBalance = getDJBalance(activeDJId);
-  const avgTip = acceptedTips.length > 0 ? myBalance / acceptedTips.length : 0;
+  // DJ wallet: real total of captured tips when the backend is configured.
+  const myBalance = djWallet.active ? djWallet.totalReceived : getDJBalance(activeDJId);
+  const acceptedCount = djWallet.active ? djWallet.count : acceptedTips.length;
+  const avgTip = acceptedCount > 0 ? myBalance / acceptedCount : 0;
   const biggestTip = acceptedTips.length > 0 ? Math.max(...acceptedTips.map((t) => t.amount)) : 0;
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;

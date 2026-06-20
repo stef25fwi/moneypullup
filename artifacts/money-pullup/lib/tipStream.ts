@@ -63,3 +63,25 @@ export function subscribePendingTipsForDj(
     (err) => onError?.(err),
   );
 }
+
+/**
+ * Subscribes to the captured (accepted) tips for a DJ — the basis of the DJ
+ * wallet's "total received" and per-event figures. Returns an unsubscribe.
+ */
+export function subscribeReceivedTipsForDj(
+  djOwnerUid: string,
+  onTips: (tips: StreamTip[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  const q = query(
+    collection(firestore(), "tips"),
+    where("djOwnerUid", "==", djOwnerUid),
+    where("status", "==", "captured"),
+    orderBy("createdAt", "desc"),
+  );
+  return onSnapshot(
+    q,
+    (snap) => onTips(snap.docs.map(toTip)),
+    (err) => onError?.(err),
+  );
+}
