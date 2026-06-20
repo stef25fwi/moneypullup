@@ -25,10 +25,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlowBackground } from "@/components/GlowBackground";
 import { GlassCard } from "@/components/GlassCard";
 import { TipButton } from "@/components/TipButton";
-import { StripeModal } from "@/components/StripeModal";
 import { useTips } from "@/contexts/TipsContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
+import { useTipCheckout } from "@/hooks/useTipCheckout";
 
 const PRESET_AMOUNTS = [5, 10, 15, 20];
 
@@ -84,15 +84,11 @@ export default function FanScreen() {
   const { toggleTheme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const {
-    wallet,
     djs,
     selectedDj,
     setSelectedDj,
-    sendTip,
-    openStripeModal,
-    isStripeModalVisible,
-    closeStripeModal,
   } = useTips();
+  const tipCheckout = useTipCheckout();
 
   const [selectedAmount, setSelectedAmount] = useState<number>(10);
   const [customAmount, setCustomAmount] = useState("");
@@ -115,37 +111,33 @@ export default function FanScreen() {
   const ACCENT = isDark ? "#FF0088" : "#8B5CF6";
   const GOLD = "#FFD700";
 
-  const handleSendTip = useCallback(() => {
+  const markSent = useCallback((djName: string) => {
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    sendBtnScale.value = withSequence(
+      withSpring(0.88, { damping: 8 }),
+      withSpring(1.1, { damping: 8 }),
+      withSpring(1, { damping: 10 })
+    );
+    setLastSentSuccess(true);
+    setLastSentDjName(djName);
+    setMessage("");
+    setTimeout(() => setLastSentSuccess(false), 3500);
+  }, [sendBtnScale]);
+
+  const handleSendTip = useCallback(async () => {
     if (!selectedDj) return;
     if (effectiveAmount <= 0) {
       Alert.alert("Montant invalide", "Veuillez saisir un montant valide.");
       return;
     }
-    if (wallet.balance < effectiveAmount) {
-      Alert.alert(
-        "Solde insuffisant",
-        `Votre solde est de ${wallet.balance}€. Rechargez votre portefeuille.`,
-        [
-          { text: "Annuler", style: "cancel" },
-          { text: "Recharger", onPress: openStripeModal },
-        ]
-      );
-      return;
+    // Per-tip manual-capture PaymentIntent via the Stripe Payment Sheet.
+    try {
+      const outcome = await tipCheckout(selectedDj.id, effectiveAmount, message);
+      if (outcome === "authorized") markSent(selectedDj.name);
+    } catch (e) {
+      Alert.alert("Paiement impossible", e instanceof Error ? e.message : "Réessayez plus tard.");
     }
-    const success = sendTip(selectedDj.id, effectiveAmount, message);
-    if (success) {
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      sendBtnScale.value = withSequence(
-        withSpring(0.88, { damping: 8 }),
-        withSpring(1.1, { damping: 8 }),
-        withSpring(1, { damping: 10 })
-      );
-      setLastSentSuccess(true);
-      setLastSentDjName(selectedDj.name);
-      setMessage("");
-      setTimeout(() => setLastSentSuccess(false), 3500);
-    }
-  }, [selectedDj, effectiveAmount, wallet.balance, sendTip, message, sendBtnScale, openStripeModal]);
+  }, [selectedDj, effectiveAmount, message, tipCheckout, markSent]);
 
   return (
     <View style={[styles.container, { backgroundColor: BG }]}>
@@ -167,11 +159,6 @@ export default function FanScreen() {
               style={[styles.topBtn, { backgroundColor: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.18)" }]}
             >
               <Feather name={isDark ? "sun" : "moon"} size={16} color={isDark ? GOLD : "#8B5CF6"} />
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={openStripeModal} style={[styles.walletBtn, { borderColor: GOLD }]}>
-              <Feather name="credit-card" size={14} color={GOLD} />
-              <Text style={[styles.walletText, { color: GOLD }]}>{wallet.balance.toFixed(2)}€</Text>
             </TouchableOpacity>
           </View>
 
@@ -327,12 +314,6 @@ export default function FanScreen() {
                 </Text>
               </TouchableOpacity>
             </Animated.View>
-
-            {/* RECHARGER */}
-            <TouchableOpacity onPress={openStripeModal} style={[styles.actionBtn, { backgroundColor: "#BB5500" }]}>
-              <MaterialCommunityIcons name="wallet-plus" size={17} color="#fff" />
-              <Text style={styles.actionBtnLabel}>RECHARGER</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Custom amount input */}
@@ -340,7 +321,7 @@ export default function FanScreen() {
             <TextInput
               value={customAmount}
               onChangeText={setCustomAmount}
-              placeholder={`Max disponible: ${wallet.balance.toFixed(2)}€`}
+              placeholder="Montant libre en €"
               placeholderTextColor={isDark ? "rgba(200,150,255,0.4)" : "rgba(100,0,200,0.3)"}
               keyboardType="numeric"
               style={[
@@ -367,21 +348,8 @@ export default function FanScreen() {
             </GlassCard>
           )}
 
-          {/* Low balance */}
-          {wallet.balance < 5 && (
-            <TouchableOpacity
-              onPress={openStripeModal}
-              style={[styles.lowBalBar, { backgroundColor: "rgba(255,215,0,0.09)", borderColor: GOLD }]}
-            >
-              <Feather name="alert-circle" size={14} color={GOLD} />
-              <Text style={[styles.lowBalText, { color: GOLD }]}>Solde faible — Appuyez pour recharger</Text>
-              <Feather name="chevron-right" size={14} color={GOLD} />
-            </TouchableOpacity>
-          )}
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <StripeModal visible={isStripeModalVisible} onClose={closeStripeModal} />
     </View>
   );
 }
@@ -392,8 +360,6 @@ const styles = StyleSheet.create({
 
   topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
   topBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-  walletBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 22, borderWidth: 1.5, backgroundColor: "rgba(255,215,0,0.1)" },
-  walletText: { fontSize: 15, fontFamily: "Inter_700Bold" },
 
   djBanner: {
     flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 15, paddingHorizontal: 16,
@@ -446,7 +412,4 @@ const styles = StyleSheet.create({
   pendingBanner: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, marginBottom: 10 },
   pendingTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   pendingSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#F59E0B", marginTop: 2 },
-
-  lowBalBar: { flexDirection: "row", alignItems: "center", gap: 8, padding: 13, borderRadius: 13, borderWidth: 1 },
-  lowBalText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium" },
 });

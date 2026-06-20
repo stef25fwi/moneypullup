@@ -3,6 +3,7 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
 import { API_BASE_URL, isApiConfigured } from "@/constants/config";
+import { getWalletId } from "@/lib/walletId";
 
 export type TopUpResult = "success" | "cancelled" | "dismissed";
 
@@ -33,13 +34,16 @@ async function createCheckoutSession(
   // Both share the same base path so a single `returnUrl` closes the in-app
   // browser; the `status` query tells us which outcome occurred.
   const returnUrl = Linking.createURL("wallet/topup");
-  const successUrl = Linking.createURL("wallet/topup", { queryParams: { status: "success" } });
+  const successUrl = Linking.createURL("wallet/topup", {
+    queryParams: { status: "success", amount: String(amount) },
+  });
   const cancelUrl = Linking.createURL("wallet/topup", { queryParams: { status: "cancel" } });
 
+  const walletId = await getWalletId();
   const res = await fetch(`${API_BASE_URL}/api/payments/checkout`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ amount, successUrl, cancelUrl }),
+    body: JSON.stringify({ amount, successUrl, cancelUrl, walletId }),
   });
 
   if (!res.ok) {

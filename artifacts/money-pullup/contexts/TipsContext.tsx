@@ -6,6 +6,16 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { Alert } from "react-native";
+
+import { isApiConfigured } from "@/constants/config";
+import {
+  acceptTipRemote,
+  getWalletBalanceRemote,
+  InsufficientFundsError,
+  listMyTipsRemote,
+  sendTipRemote,
+} from "@/lib/tips";
 
 export type TipStatus = "pending" | "accepted";
 
@@ -225,6 +235,56 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
     });
   }, [persist]);
 
+  // Reconcile the local cache with the server (authoritative when configured).
+  // No-op offline / when the API is not configured, so the app keeps working.
+  const hydrateFromServer = useCallback(async () => {
+    if (!isApiConfigured()) return;
+    try {
+      const [balance, remoteTips] = await Promise.all([
+        getWalletBalanceRemote(),
+        listMyTipsRemote(),
+      ]);
+
+      if (balance != null) {
+        setWallet((prev) => {
+          const updated = { ...prev, balance };
+          persist(STORAGE_KEY_WALLET, updated);
+          return updated;
+        });
+      }
+
+      const mapped: Tip[] = remoteTips
+        .filter((t) => t.status !== "refused")
+        .map((t) => ({
+          id: t.id,
+          amount: t.amount,
+          fromName: t.fromName,
+          message: t.message,
+          timestamp: new Date(t.timestamp),
+          djId: t.djId,
+          djName: t.djName,
+          status: t.status as TipStatus,
+        }));
+
+      setTips((prev) => {
+        // Server wins for known ids; keep any local-only (unsynced) tips.
+        const serverIds = new Set(mapped.map((t) => t.id));
+        const localOnly = prev.filter((t) => !serverIds.has(t.id));
+        const merged = [...mapped, ...localOnly].sort(
+          (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
+        );
+        persist(STORAGE_KEY_TIPS, merged);
+        return merged;
+      });
+    } catch {
+      /* offline — keep local state */
+    }
+  }, [persist]);
+
+  useEffect(() => {
+    hydrateFromServer();
+  }, [hydrateFromServer]);
+
   const sendTip = useCallback((djId: string, amount: number, message: string): boolean => {
     if (wallet.balance < amount) return false;
     const dj = djs.find((d) => d.id === djId);
@@ -241,6 +301,7 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
       status: "pending",
     };
 
+    // Optimistic local update for instant feedback.
     setWallet((prev) => {
       const updated = { ...prev, balance: prev.balance - amount };
       persist(STORAGE_KEY_WALLET, updated);
@@ -257,8 +318,27 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
       prev.map((d) => d.id === djId ? { ...d, totalTipsToday: d.totalTipsToday + amount } : d)
     );
 
+    // Persist server-side (authoritative) when configured.
+    if (isApiConfigured()) {
+      sendTipRemote({ id: newTip.id, djId, djName: dj.name, amount, message, fanName: fanProfile.name })
+        .then(({ balance }) => {
+          setWallet((prev) => {
+            const updated = { ...prev, balance };
+            persist(STORAGE_KEY_WALLET, updated);
+            return updated;
+          });
+        })
+        .catch((err) => {
+          if (err instanceof InsufficientFundsError) {
+            Alert.alert("Solde insuffisant", "Le tip n'a pas pu être envoyé.");
+          }
+          // Re-sync with server truth (removes the optimistic tip on rejection).
+          hydrateFromServer();
+        });
+    }
+
     return true;
-  }, [wallet.balance, djs, fanProfile.name, persist]);
+  }, [wallet.balance, djs, fanProfile.name, persist, hydrateFromServer]);
 
   const acceptTip = useCallback((tipId: string) => {
     setTips((prev) => {
@@ -266,7 +346,11 @@ export function TipsProvider({ children }: { children: React.ReactNode }) {
       persist(STORAGE_KEY_TIPS, updated);
       return updated;
     });
-  }, [persist]);
+
+    if (isApiConfigured()) {
+      acceptTipRemote(tipId).catch(() => hydrateFromServer());
+    }
+  }, [persist, hydrateFromServer]);
 
   const toggleDJLive = useCallback((djId: string) => {
     setDjs((prev) => {

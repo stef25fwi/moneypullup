@@ -30,6 +30,8 @@ import { DJWalletModal } from "@/components/DJWalletModal";
 import { useTips, SocialLinks, Tip } from "@/contexts/TipsContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
+import { useDjInbox } from "@/hooks/useDjInbox";
+import { useDjWallet } from "@/hooks/useDjWallet";
 
 function AcceptTipCard({ tip, onAccept }: { tip: Tip; onAccept: (id: string) => void }) {
   const colors = useColors();
@@ -95,6 +97,8 @@ export default function DJScreen() {
     getTipsForDJ, getPendingTipsForDJ, getDJBalance, getDJAvailableBalance,
     acceptTip, updateDJSocialLinks, toggleDJLive,
   } = useTips();
+  const inbox = useDjInbox();
+  const djWallet = useDjWallet();
 
   const [activeDJId, setActiveDJId] = useState("dj1");
   const [editingName, setEditingName] = useState(false);
@@ -105,11 +109,16 @@ export default function DJScreen() {
 
   const myDj = djs.find((d) => d.id === activeDJId);
   const myTips = getTipsForDJ(activeDJId);
-  const pendingTips = getPendingTipsForDJ(activeDJId);
+  // When Firebase is configured, pending (held) tips come live from Firestore.
+  const pendingTips = inbox.active ? inbox.pendingTips : getPendingTipsForDJ(activeDJId);
+  const handleAcceptTip = inbox.active ? inbox.accept : acceptTip;
   const acceptedTips = myTips.filter((t) => t.status === "accepted");
-  const myBalance = getDJBalance(activeDJId);
-  const avgTip = acceptedTips.length > 0 ? myBalance / acceptedTips.length : 0;
+  // DJ wallet: real total of captured tips when the backend is configured.
+  const myBalance = djWallet.active ? djWallet.totalReceived : getDJBalance(activeDJId);
+  const acceptedCount = djWallet.active ? djWallet.count : acceptedTips.length;
+  const avgTip = acceptedCount > 0 ? myBalance / acceptedCount : 0;
   const biggestTip = acceptedTips.length > 0 ? Math.max(...acceptedTips.map((t) => t.amount)) : 0;
+  const recordTip = djWallet.active ? djWallet.biggest : biggestTip;
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
 
@@ -233,13 +242,15 @@ export default function DJScreen() {
           <View style={styles.balanceTop}>
             <View>
               <Text style={[styles.balanceLabel, { color: colors.mutedForeground }]}>Total accepté ce soir</Text>
-              <Text style={[styles.balanceAmount, { color: colors.gold }]}>{myBalance.toFixed(2)}€</Text>
+              <Text style={[styles.balanceAmount, { color: colors.gold }]}>
+                {(djWallet.active ? djWallet.tonightReceived : myBalance).toFixed(2)}€
+              </Text>
             </View>
             <MaterialCommunityIcons name="cash-multiple" size={40} color={colors.gold} style={{ opacity: 0.6 }} />
           </View>
           <View style={[styles.statsRow, { borderTopColor: colors.glassBorder, borderTopWidth: 1 }]}>
             <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.primary }]}>{acceptedTips.length}</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{acceptedCount}</Text>
               <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Acceptés</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.glassBorder }]} />
@@ -249,7 +260,7 @@ export default function DJScreen() {
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.glassBorder }]} />
             <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.neonPink }]}>{biggestTip > 0 ? `${biggestTip}€` : "—"}</Text>
+              <Text style={[styles.statValue, { color: colors.neonPink }]}>{recordTip > 0 ? `${recordTip}€` : "—"}</Text>
               <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Record</Text>
             </View>
           </View>
@@ -342,7 +353,7 @@ export default function DJScreen() {
             </View>
             <View style={styles.tipsList}>
               {pendingTips.map((tip) => (
-                <AcceptTipCard key={tip.id} tip={tip} onAccept={acceptTip} />
+                <AcceptTipCard key={tip.id} tip={tip} onAccept={handleAcceptTip} />
               ))}
             </View>
           </>
@@ -374,6 +385,8 @@ export default function DJScreen() {
           </View>
         )}
       </ScrollView>
+
+      <DJWalletModal visible={walletOpen} onClose={() => setWalletOpen(false)} djId={activeDJId} />
     </View>
   );
 }

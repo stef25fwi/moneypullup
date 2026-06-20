@@ -20,7 +20,7 @@ class ImportedArchitecture {
     ImportedFeature(
       name: 'Tips context',
       legacyPath: 'contexts/TipsContext.tsx',
-      flutterTarget: 'lib/core/state/tips_controller.dart',
+      flutterTarget: 'lib/core/state/remote_tips_controller.dart',
     ),
     ImportedFeature(
       name: 'Tip button',

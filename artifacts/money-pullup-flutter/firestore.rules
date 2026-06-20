@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // User profiles — each user manages their own.
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // DJ profiles are public to read. The owner may edit profile fields, but
+    // Stripe-controlled fields (stripeAccountId, payoutsEnabled, chargesEnabled,
+    // detailsSubmitted) are written only by Cloud Functions (admin bypasses rules).
+    match /djs/{djId} {
+      allow read: if true;
+
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && !request.resource.data.keys().hasAny(
+             ['stripeAccountId', 'payoutsEnabled', 'chargesEnabled', 'detailsSubmitted']);
+
+      allow update: if signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.stripeAccountId == resource.data.get('stripeAccountId', null)
+        && request.resource.data.payoutsEnabled == resource.data.get('payoutsEnabled', false)
+        && request.resource.data.chargesEnabled == resource.data.get('chargesEnabled', false);
+    }
+
+    // Tips are written exclusively by Cloud Functions. Fans see their own;
+    // the DJ owner sees tips addressed to them (for the live dashboard).
+    match /tips/{tipId} {
+      allow read: if signedIn()
+        && (request.auth.uid == resource.data.fanUid
+            || request.auth.uid == resource.data.djOwnerUid);
+      allow write: if false;
+    }
+  }
+}

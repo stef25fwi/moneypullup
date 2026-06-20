@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 import { getStripe, StripeNotConfiguredError } from "../lib/stripe";
+import { getDjEarnings, isDbConfigured, recordDjPayout } from "../lib/tips";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -26,6 +27,9 @@ const PayoutBody = z.object({
   accountId,
   // Amount to pay out, in euros.
   amount: z.number().positive().min(MIN_AMOUNT_EUR).max(MAX_AMOUNT_EUR),
+  // DJ id — when provided (and a DB is configured) the available balance is
+  // enforced and the payout is recorded in the DJ ledger.
+  djId: z.string().min(1).max(128).optional(),
 });
 
 function handleStripeError(res: Response, err: unknown): void {
@@ -122,17 +126,31 @@ router.post("/connect/payouts", async (req: Request, res: Response) => {
     return;
   }
 
-  const { accountId: destination, amount } = parsed.data;
+  const { accountId: destination, amount, djId } = parsed.data;
   const amountInCents = Math.round(amount * 100);
 
   try {
+    // Enforce the DJ's available balance when we can account for it.
+    if (djId && isDbConfigured()) {
+      const { availableCents } = await getDjEarnings(djId);
+      if (amountInCents > availableCents) {
+        res.status(402).json({ error: "insufficient_balance", availableCents });
+        return;
+      }
+    }
+
     const stripe = getStripe();
     const transfer = await stripe.transfers.create({
       amount: amountInCents,
       currency: CURRENCY,
       destination,
-      metadata: { type: "dj_payout" },
+      metadata: { type: "dj_payout", ...(djId ? { dj_id: djId } : {}) },
     });
+
+    if (djId && isDbConfigured()) {
+      await recordDjPayout({ transferId: transfer.id, djId, amountCents: amountInCents });
+    }
+
     res.json({ transferId: transfer.id, amount });
   } catch (err) {
     handleStripeError(res, err);
