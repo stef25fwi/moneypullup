@@ -53,11 +53,6 @@ class _MoneyPullUpShellState extends State<MoneyPullUpShell> {
   final RemoteTipsController _controller = RemoteTipsController();
   late final String _djId;
 
-  // Cosmetic only under the manual-capture model: the fan now pays per tip via
-  // the Payment Sheet, so there is no prepaid wallet to debit. Kept so the
-  // existing wallet/recharge UI keeps compiling; remove in a dedicated UI pass.
-  int _walletBalance = 0;
-
   @override
   void initState() {
     super.initState();
@@ -98,9 +93,7 @@ class _MoneyPullUpShellState extends State<MoneyPullUpShell> {
             FanPage(
               currentIndex: navIndex,
               onNavChanged: (v) => setState(() => navIndex = v),
-              walletBalance: _walletBalance,
               onSendTip: _sendTip,
-              onAddFunds: (a) => setState(() => _walletBalance += a),
             ),
             DjDashboardPage(
               currentIndex: navIndex,
@@ -129,17 +122,13 @@ class _MoneyPullUpShellState extends State<MoneyPullUpShell> {
 class FanPage extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onNavChanged;
-  final int walletBalance;
   final Future<bool> Function(int amount, String message) onSendTip;
-  final ValueChanged<int> onAddFunds;
 
   const FanPage({
     super.key,
     required this.currentIndex,
     required this.onNavChanged,
-    required this.walletBalance,
     required this.onSendTip,
-    required this.onAddFunds,
   });
 
   @override
@@ -227,60 +216,6 @@ class _FanPageState extends State<FanPage> {
     );
   }
 
-  void _handleRecharge() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF10081E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Recharger le wallet',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [10, 20, 50, 100].map((amount) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    widget.onAddFunds(amount);
-                    Navigator.pop(ctx);
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('💳 $amount€ rechargés !'),
-                        duration: const Duration(seconds: 2),
-                        backgroundColor: kCyan,
-                      ),
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: kCyan,
-                    side: const BorderSide(color: kCyan),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text('+$amount €',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w700)),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler',
-                style: TextStyle(color: Color(0xFFA9A3BA))),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context).size;
@@ -350,9 +285,7 @@ class _FanPageState extends State<FanPage> {
                   veryCompact ? 4 : 8),
               child: Column(
                 children: [
-                  HeroDjCard(
-                      height: heroHeight,
-                      walletBalance: widget.walletBalance),
+                  HeroDjCard(height: heroHeight),
                   SizedBox(
                       height: veryCompact
                           ? 6
@@ -426,15 +359,6 @@ class _FanPageState extends State<FanPage> {
                         const SizedBox(width: 14),
                         Expanded(
                             child: MainTipButton(onTap: _handleSendTip)),
-                        const SizedBox(width: 14),
-                        ActionSideButton(
-                          width: sideButtonWidth,
-                          borderColor: kCyan,
-                          icon: Icons.account_balance_wallet_outlined,
-                          iconColor: kCyan,
-                          label: 'RECHARGER',
-                          onTap: _handleRecharge,
-                        ),
                       ],
                     ),
                   ),
@@ -498,9 +422,7 @@ class GlowBlob extends StatelessWidget {
 
 class HeroDjCard extends StatelessWidget {
   final double height;
-  final int walletBalance;
-  const HeroDjCard(
-      {super.key, required this.height, required this.walletBalance});
+  const HeroDjCard({super.key, required this.height});
 
   @override
   Widget build(BuildContext context) {
@@ -545,31 +467,6 @@ class HeroDjCard extends StatelessWidget {
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.5)),
-            ),
-          ),
-          Positioned(
-            top: 14,
-            right: 14,
-            child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 17),
-              decoration: BoxDecoration(
-                color: const Color.fromRGBO(20, 10, 35, 0.68),
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: kPink.withValues(alpha: 0.35)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.account_balance_wallet_outlined,
-                      color: kPink, size: 21),
-                  const SizedBox(width: 10),
-                  Text('$walletBalance €',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700)),
-                ],
-              ),
             ),
           ),
           const Positioned(
