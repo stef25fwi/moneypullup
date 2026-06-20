@@ -30,6 +30,7 @@ import { DJWalletModal } from "@/components/DJWalletModal";
 import { useTips, SocialLinks, Tip } from "@/contexts/TipsContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
+import { useDjInbox } from "@/hooks/useDjInbox";
 
 function AcceptTipCard({ tip, onAccept }: { tip: Tip; onAccept: (id: string) => void }) {
   const colors = useColors();
@@ -95,6 +96,7 @@ export default function DJScreen() {
     getTipsForDJ, getPendingTipsForDJ, getDJBalance, getDJAvailableBalance,
     acceptTip, updateDJSocialLinks, toggleDJLive,
   } = useTips();
+  const inbox = useDjInbox();
 
   const [activeDJId, setActiveDJId] = useState("dj1");
   const [editingName, setEditingName] = useState(false);
@@ -105,7 +107,9 @@ export default function DJScreen() {
 
   const myDj = djs.find((d) => d.id === activeDJId);
   const myTips = getTipsForDJ(activeDJId);
-  const pendingTips = getPendingTipsForDJ(activeDJId);
+  // When Firebase is configured, pending (held) tips come live from Firestore.
+  const pendingTips = inbox.active ? inbox.pendingTips : getPendingTipsForDJ(activeDJId);
+  const handleAcceptTip = inbox.active ? inbox.accept : acceptTip;
   const acceptedTips = myTips.filter((t) => t.status === "accepted");
   const myBalance = getDJBalance(activeDJId);
   const avgTip = acceptedTips.length > 0 ? myBalance / acceptedTips.length : 0;
@@ -342,7 +346,7 @@ export default function DJScreen() {
             </View>
             <View style={styles.tipsList}>
               {pendingTips.map((tip) => (
-                <AcceptTipCard key={tip.id} tip={tip} onAccept={acceptTip} />
+                <AcceptTipCard key={tip.id} tip={tip} onAccept={handleAcceptTip} />
               ))}
             </View>
           </>

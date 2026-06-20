@@ -29,6 +29,8 @@ import { StripeModal } from "@/components/StripeModal";
 import { useTips } from "@/contexts/TipsContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
+import { useTipCheckout } from "@/hooks/useTipCheckout";
+import { isFirebaseConfigured } from "@/lib/firebase";
 
 const PRESET_AMOUNTS = [5, 10, 15, 20];
 
@@ -93,6 +95,7 @@ export default function FanScreen() {
     isStripeModalVisible,
     closeStripeModal,
   } = useTips();
+  const tipCheckout = useTipCheckout();
 
   const [selectedAmount, setSelectedAmount] = useState<number>(10);
   const [customAmount, setCustomAmount] = useState("");
@@ -115,12 +118,38 @@ export default function FanScreen() {
   const ACCENT = isDark ? "#FF0088" : "#8B5CF6";
   const GOLD = "#FFD700";
 
-  const handleSendTip = useCallback(() => {
+  const markSent = useCallback((djName: string) => {
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    sendBtnScale.value = withSequence(
+      withSpring(0.88, { damping: 8 }),
+      withSpring(1.1, { damping: 8 }),
+      withSpring(1, { damping: 10 })
+    );
+    setLastSentSuccess(true);
+    setLastSentDjName(djName);
+    setMessage("");
+    setTimeout(() => setLastSentSuccess(false), 3500);
+  }, [sendBtnScale]);
+
+  const handleSendTip = useCallback(async () => {
     if (!selectedDj) return;
     if (effectiveAmount <= 0) {
       Alert.alert("Montant invalide", "Veuillez saisir un montant valide.");
       return;
     }
+
+    // Target model: per-tip manual-capture PaymentIntent via Stripe Payment Sheet.
+    if (isFirebaseConfigured()) {
+      try {
+        const outcome = await tipCheckout(selectedDj.id, effectiveAmount, message);
+        if (outcome === "authorized") markSent(selectedDj.name);
+      } catch (e) {
+        Alert.alert("Paiement impossible", e instanceof Error ? e.message : "Réessayez plus tard.");
+      }
+      return;
+    }
+
+    // Legacy prepaid-wallet path (no backend configured).
     if (wallet.balance < effectiveAmount) {
       Alert.alert(
         "Solde insuffisant",
@@ -133,19 +162,8 @@ export default function FanScreen() {
       return;
     }
     const success = sendTip(selectedDj.id, effectiveAmount, message);
-    if (success) {
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      sendBtnScale.value = withSequence(
-        withSpring(0.88, { damping: 8 }),
-        withSpring(1.1, { damping: 8 }),
-        withSpring(1, { damping: 10 })
-      );
-      setLastSentSuccess(true);
-      setLastSentDjName(selectedDj.name);
-      setMessage("");
-      setTimeout(() => setLastSentSuccess(false), 3500);
-    }
-  }, [selectedDj, effectiveAmount, wallet.balance, sendTip, message, sendBtnScale, openStripeModal]);
+    if (success) markSent(selectedDj.name);
+  }, [selectedDj, effectiveAmount, wallet.balance, sendTip, message, openStripeModal, tipCheckout, markSent]);
 
   return (
     <View style={[styles.container, { backgroundColor: BG }]}>

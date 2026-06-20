@@ -6,6 +6,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { StripeProvider } from "@stripe/stripe-react-native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
@@ -16,6 +17,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TipsProvider } from "@/contexts/TipsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ensureSignedIn } from "@/lib/firebase";
+
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -43,21 +47,28 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  useEffect(() => {
+    // Establish an (anonymous) Firebase session for tips. No-op if unconfigured.
+    ensureSignedIn().catch(() => {});
+  }, []);
+
   if (!fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
         <ThemeProvider>
-          <QueryClientProvider client={queryClient}>
-            <TipsProvider>
-              <GestureHandlerRootView>
-                <KeyboardProvider>
-                  <RootLayoutNav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </TipsProvider>
-          </QueryClientProvider>
+          <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+            <QueryClientProvider client={queryClient}>
+              <TipsProvider>
+                <GestureHandlerRootView>
+                  <KeyboardProvider>
+                    <RootLayoutNav />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </TipsProvider>
+            </QueryClientProvider>
+          </StripeProvider>
         </ThemeProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
