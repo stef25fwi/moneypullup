@@ -13,12 +13,16 @@ function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
+        <Icon sf={{ default: "bolt", selected: "bolt.fill" }} />
         <Label>Fan</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="dj">
         <Icon sf={{ default: "music.note", selected: "music.note" }} />
         <Label>DJ</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="history">
+        <Icon sf={{ default: "clock", selected: "clock.fill" }} />
+        <Label>Historique</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person.circle", selected: "person.circle.fill" }} />
@@ -31,7 +35,7 @@ function NativeTabLayout() {
 function ClassicTabLayout() {
   const colors = useColors();
   const isIOS = Platform.OS === "ios";
-  const isWeb = Platform.OS === "web";
+  const isWeb = (Platform.OS as string) === "web";
 
   return (
     <Tabs
@@ -61,9 +65,9 @@ function ClassicTabLayout() {
           title: "Fan",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="person.2" tintColor={color} size={24} />
+              <SymbolView name="bolt" tintColor={color} size={24} />
             ) : (
-              <Feather name="users" size={22} color={color} />
+              <Feather name="zap" size={22} color={color} />
             ),
         }}
       />
@@ -80,6 +84,18 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="history"
+        options={{
+          title: "Historique",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="clock" tintColor={color} size={24} />
+            ) : (
+              <Feather name="clock" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profil",
@@ -91,6 +107,8 @@ function ClassicTabLayout() {
             ),
         }}
       />
+      {/* Hidden screens — not shown as tabs */}
+      <Tabs.Screen name="fan" options={{ href: null }} />
     </Tabs>
   );
 }
