@@ -18,6 +18,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TipsProvider } from "@/contexts/TipsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ensureSignedIn } from "@/lib/firebase";
+import { registerPushToken } from "@/lib/notifications";
 
 const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
 
@@ -48,8 +49,10 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    // Establish an (anonymous) Firebase session for tips. No-op if unconfigured.
-    ensureSignedIn().catch(() => {});
+    // Establish an (anonymous) Firebase session and register for push notifications.
+    ensureSignedIn()
+      .then((uid) => { if (uid) registerPushToken(uid); })
+      .catch(() => {});
   }, []);
 
   if (!fontsLoaded && !fontError) return null;

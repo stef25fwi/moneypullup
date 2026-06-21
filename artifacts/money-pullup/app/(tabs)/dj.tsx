@@ -31,6 +31,7 @@ import { GlowBackground } from "@/components/GlowBackground";
 import { GlassCard } from "@/components/GlassCard";
 import { TipNotification } from "@/components/TipNotification";
 import { DJWalletModal } from "@/components/DJWalletModal";
+import { DjShareModal } from "@/components/DjShareModal";
 import { useTips, SocialLinks, Tip } from "@/contexts/TipsContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
@@ -207,6 +208,7 @@ export default function DJScreen() {
   const [editingAutoMessage, setEditingAutoMessage] = useState(false);
   const [autoMessageDraft, setAutoMessageDraft] = useState("");
   const [walletOpen, setWalletOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [isLive, setIsLive] = useState(false);
 
   const myDj = djs.find((d) => d.id === activeDJId);
@@ -313,6 +315,14 @@ export default function DJScreen() {
               style={[styles.themeToggle, { backgroundColor: colors.glassBackground, borderColor: colors.glassBorder }]}
             >
               <Feather name={isDark ? "sun" : "moon"} size={16} color={isDark ? colors.gold : colors.violet} />
+            </TouchableOpacity>
+
+            {/* Share / QR code button */}
+            <TouchableOpacity
+              onPress={() => setShareOpen(true)}
+              style={[styles.iconBtn, { backgroundColor: colors.glassBackground, borderColor: colors.glassBorder }]}
+            >
+              <MaterialCommunityIcons name="qrcode" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
 
             {/* Wallet button */}
@@ -543,6 +553,12 @@ export default function DJScreen() {
       </ScrollView>
 
       <DJWalletModal visible={walletOpen} onClose={() => setWalletOpen(false)} djId={activeDJId} />
+      <DjShareModal
+        visible={shareOpen}
+        onClose={() => setShareOpen(false)}
+        djId={activeDJId}
+        djName={currentDJName}
+      />
     </View>
   );
 }
@@ -753,6 +769,10 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
   tipsList: { gap: 8 },
+  iconBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: "center", justifyContent: "center", borderWidth: 1,
+  },
   walletBtn: {
     flexDirection: "row",
     alignItems: "center",

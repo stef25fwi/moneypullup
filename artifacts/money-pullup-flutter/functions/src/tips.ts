@@ -7,6 +7,26 @@ const db = () => admin.firestore();
 const MIN_CENTS = 100; // 1 €
 const MAX_CENTS = 50000; // 500 €
 
+/**
+ * Sends an Expo push notification to the fan if they have registered a token.
+ * Non-fatal — failures are swallowed so they never block a capture/cancel.
+ */
+async function notifyFan(fanUid: string, title: string, body: string): Promise<void> {
+  try {
+    const snap = await db().collection("users").doc(fanUid).get();
+    const token = snap.data()?.expoPushToken;
+    if (!token || typeof token !== "string") return;
+
+    await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ to: token, title, body, sound: "default" }),
+    });
+  } catch {
+    // Non-fatal
+  }
+}
+
 function requireUid(req: CallableRequest): string {
   const uid = req.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -135,6 +155,15 @@ export const acceptTip = onCall(async (req) => {
     },
     { merge: true },
   );
+
+  const amountEur = (tip.amountCents / 100).toFixed(0);
+  const msg = autoMessage ? `"${autoMessage}"` : "Merci pour votre soutien ! 🎧";
+  await notifyFan(
+    tip.fanUid,
+    `💚 Tip accepté — ${amountEur}€`,
+    `${tip.djName || "Le DJ"} a accepté votre tip. ${msg}`,
+  );
+
   return { status: "captured", djAutoMessage: autoMessage };
 });
 
@@ -150,5 +179,13 @@ export const refuseTip = onCall(async (req) => {
     { status: "cancelled", refusedByDj: true, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
     { merge: true },
   );
+
+  const amountEur = (tip.amountCents / 100).toFixed(0);
+  await notifyFan(
+    tip.fanUid,
+    `❌ Tip refusé — ${amountEur}€`,
+    `${tip.djName || "Le DJ"} n'a pas accepté votre tip. Vous n'avez pas été débité.`,
+  );
+
   return { status: "cancelled" };
 });
