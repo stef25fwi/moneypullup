@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useStripe } from "@stripe/stripe-react-native";
 
-import { createTipPaymentIntent } from "@/lib/tipFunctions";
+import { confirmTip, createTipPaymentIntent } from "@/lib/tipFunctions";
 
 export type TipOutcome = "authorized" | "cancelled";
 
@@ -32,6 +32,8 @@ export function useTipCheckout() {
         if (result.error.code === "Canceled") return "cancelled";
         throw new Error(result.error.message);
       }
+      // Payment authorised: surface the tip to the DJ now (webhook is the backstop).
+      await confirmTip(intent.tipId).catch(() => {});
       return "authorized";
     },
     [initPaymentSheet, presentPaymentSheet],

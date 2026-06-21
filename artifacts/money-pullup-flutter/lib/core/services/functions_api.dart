@@ -35,6 +35,10 @@ class FunctionsApi {
     );
   }
 
+  Future<void> confirmTip(String tipId) async {
+    await _functions.httpsCallable('confirmTip').call({'tipId': tipId});
+  }
+
   Future<void> acceptTip(String tipId) async {
     await _functions.httpsCallable('acceptTip').call({'tipId': tipId});
   }

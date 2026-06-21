@@ -5,5 +5,5 @@ admin.initializeApp();
 setGlobalOptions({ region: "europe-west1" });
 
 export { createDjConnectAccount, createDjOnboardingLink, getDjAccountStatus } from "./connect";
-export { createTipPaymentIntent, acceptTip, refuseTip } from "./tips";
+export { createTipPaymentIntent, confirmTip, acceptTip, refuseTip } from "./tips";
 export { stripeWebhook } from "./webhook";

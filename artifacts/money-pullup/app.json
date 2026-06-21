@@ -37,6 +37,14 @@
           "merchantIdentifier": "merchant.com.moneypullup",
           "enableGooglePay": false
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#7C3AED",
+          "sounds": []
+        }
       ]
     ],
     "experiments": {
