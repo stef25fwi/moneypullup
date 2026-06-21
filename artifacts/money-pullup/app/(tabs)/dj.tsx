@@ -1,6 +1,7 @@
 import { Feather, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -323,6 +324,14 @@ export default function DJScreen() {
               style={[styles.iconBtn, { backgroundColor: colors.glassBackground, borderColor: colors.glassBorder }]}
             >
               <MaterialCommunityIcons name="qrcode" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+
+            {/* Profile page button */}
+            <TouchableOpacity
+              onPress={() => router.navigate("/dj/profile")}
+              style={[styles.iconBtn, { backgroundColor: colors.glassBackground, borderColor: colors.glassBorder }]}
+            >
+              <Feather name="user" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
 
             {/* Wallet button */}

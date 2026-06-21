@@ -6,8 +6,21 @@ export interface DjProfile {
   isLive?: boolean;
   chargesEnabled?: boolean;
   payoutsEnabled?: boolean;
+  detailsSubmitted?: boolean;
   autoMessage?: string;
   socialLinks?: { instagram?: string; tiktok?: string; facebook?: string };
+  /** Public profile fields (DJ profile page). */
+  avatarUrl?: string;
+  city?: string;
+  bio?: string;
+  genres?: string[];
+  verified?: boolean;
+  /** Professional info. */
+  proStatus?: string;
+  siretVerified?: boolean;
+  email?: string;
+  phone?: string;
+  ibanProvided?: boolean;
 }
 
 /** Live subscription to a single DJ profile document. */
@@ -25,6 +38,10 @@ export interface DjProfileUpdate {
   isLive?: boolean;
   socialLinks?: { instagram?: string; tiktok?: string; facebook?: string };
   autoMessage?: string;
+  avatarUrl?: string;
+  city?: string;
+  bio?: string;
+  genres?: string[];
 }
 
 /** Persists partial DJ profile fields to Firestore `djs/{djId}`. No-op when Firebase is not configured. */
