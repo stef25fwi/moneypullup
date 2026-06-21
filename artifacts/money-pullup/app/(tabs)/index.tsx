@@ -1,6 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
@@ -159,6 +160,13 @@ export default function FanScreen() {
               style={[styles.topBtn, { backgroundColor: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.18)" }]}
             >
               <Feather name={isDark ? "sun" : "moon"} size={16} color={isDark ? GOLD : "#8B5CF6"} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => { if (Platform.OS !== "web") Haptics.selectionAsync(); router.navigate("/fan/profile"); }}
+              style={[styles.topBtn, { backgroundColor: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.18)" }]}
+            >
+              <Feather name="user" size={16} color={isDark ? GOLD : "#8B5CF6"} />
             </TouchableOpacity>
           </View>
 

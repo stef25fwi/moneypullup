@@ -73,3 +73,20 @@ export function generateTipStatement(args: {
 }): Promise<TipStatement> {
   return call<typeof args, TipStatement>("generateTipStatement", args);
 }
+
+export interface FanStatement {
+  statementId: string;
+  documentNumber: string;
+  format: "pdf" | "csv";
+  downloadUrl: string;
+  tipCount: number;
+  totalCents: number;
+}
+
+export function generateFanStatement(args: {
+  format: "pdf" | "csv";
+  from?: string;
+  to?: string;
+}): Promise<FanStatement> {
+  return call<typeof args, FanStatement>("generateFanStatement", args);
+}

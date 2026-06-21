@@ -31,20 +31,20 @@ interface StatementTip {
   id: string;
   date: Date;
   amountCents: number;
-  fanName: string;
+  counterparty: string;
 }
 
 function csvEscape(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-function buildCsv(tips: StatementTip[]): string {
-  const header = "Date,ID,Fan,Montant EUR,Statut";
+function buildCsv(tips: StatementTip[], counterpartyLabel: string): string {
+  const header = `Date,ID,${counterpartyLabel},Montant EUR,Statut`;
   const rows = tips.map((t) =>
     [
       fmtDate(t.date),
       `TIP-${t.id.slice(0, 4).toUpperCase()}`,
-      csvEscape(t.fanName),
+      csvEscape(t.counterparty),
       (t.amountCents / 100).toFixed(2),
       "Versé",
     ].join(","),
@@ -53,8 +53,11 @@ function buildCsv(tips: StatementTip[]): string {
 }
 
 function buildPdf(opts: {
+  title: string;
+  subjectLabel: string;
+  subjectName: string;
+  counterpartyLabel: string;
   documentNumber: string;
-  djName: string;
   from: Date;
   to: Date;
   tips: StatementTip[];
@@ -72,7 +75,7 @@ function buildPdf(opts: {
     const eur = (cents: number) => `${(cents / 100).toFixed(2)} €`;
 
     // Header
-    doc.fontSize(20).fillColor("#1a0040").text("Relevé certifié de tips", { align: "left" });
+    doc.fontSize(20).fillColor("#1a0040").text(opts.title, { align: "left" });
     doc.moveDown(0.3);
     doc.fontSize(10).fillColor("#666").text(`N° ${opts.documentNumber}`);
     doc.text(`Édité le ${new Date().toLocaleString("fr-FR")}`);
@@ -80,7 +83,7 @@ function buildPdf(opts: {
 
     // Meta
     doc.fontSize(11).fillColor("#1a0040");
-    doc.text(`DJ : ${opts.djName}`);
+    doc.text(`${opts.subjectLabel} : ${opts.subjectName}`);
     doc.text(`Période : ${fmtDate(opts.from)} – ${fmtDate(opts.to)}`);
     doc.text(`Nombre de tips : ${opts.tips.length}`);
     doc.moveDown(1);
@@ -102,7 +105,7 @@ function buildPdf(opts: {
     const cols = [
       { label: "Date", x: startX, w: 90 },
       { label: "ID", x: startX + 90, w: 90 },
-      { label: "Fan", x: startX + 180, w: 160 },
+      { label: opts.counterpartyLabel, x: startX + 180, w: 160 },
       { label: "Montant", x: startX + 340, w: 100 },
     ];
     doc.fontSize(9).fillColor("#888");
@@ -118,7 +121,7 @@ function buildPdf(opts: {
       }
       doc.text(fmtDate(t.date), cols[0].x, y, { width: cols[0].w });
       doc.text(`TIP-${t.id.slice(0, 4).toUpperCase()}`, cols[1].x, y, { width: cols[1].w });
-      doc.text(t.fanName, cols[2].x, y, { width: cols[2].w });
+      doc.text(t.counterparty, cols[2].x, y, { width: cols[2].w });
       doc.text(eur(t.amountCents), cols[3].x, y, { width: cols[3].w });
       y += 16;
     }
@@ -136,6 +139,35 @@ function buildPdf(opts: {
 
     doc.end();
   });
+}
+
+function makeDocNumber(prefix: string, now: Date, id: string): string {
+  return `${prefix}-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${id
+    .slice(0, 5)
+    .toUpperCase()}`;
+}
+
+/** Uploads the statement to Storage and returns a 7-day signed download URL. */
+async function uploadStatement(
+  ownerUid: string,
+  statementId: string,
+  format: "pdf" | "csv",
+  body: Buffer,
+  refId: string,
+  documentNumber: string,
+): Promise<string> {
+  const bucket = admin.storage().bucket();
+  const filePath = `statements/${ownerUid}/${statementId}.${format}`;
+  const file = bucket.file(filePath);
+  await file.save(body, {
+    contentType: format === "csv" ? "text/csv" : "application/pdf",
+    metadata: { metadata: { refId, documentNumber } },
+  });
+  const [downloadUrl] = await file.getSignedUrl({
+    action: "read",
+    expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+  return downloadUrl;
 }
 
 /**
@@ -178,7 +210,7 @@ export const generateTipStatement = onCall(async (req) => {
         id: d.id,
         date: data.createdAt?.toDate?.() ?? new Date(),
         amountCents: typeof data.amountCents === "number" ? data.amountCents : 0,
-        fanName: typeof data.fanName === "string" ? data.fanName : "Fan",
+        counterparty: typeof data.fanName === "string" ? data.fanName : "Fan",
       };
     })
     .filter((t) => t.date >= from && t.date <= toEnd);
@@ -187,34 +219,32 @@ export const generateTipStatement = onCall(async (req) => {
   const fraisCents = Math.round(brutCents * FEE_RATE);
   const netCents = brutCents - fraisCents;
 
-  // Document number + verification record.
   const stmtRef = db().collection("statements").doc();
-  const documentNumber = `RC-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${stmtRef.id
-    .slice(0, 5)
-    .toUpperCase()}`;
-
+  const documentNumber = makeDocNumber("RC", now, stmtRef.id);
   const djName = str(dj.name) || "DJ";
+
   const body =
     format === "csv"
-      ? Buffer.from(buildCsv(tips), "utf8")
-      : await buildPdf({ documentNumber, djName, from, to, tips, brutCents, fraisCents, netCents });
+      ? Buffer.from(buildCsv(tips, "Fan"), "utf8")
+      : await buildPdf({
+          title: "Relevé certifié de tips",
+          subjectLabel: "DJ",
+          subjectName: djName,
+          counterpartyLabel: "Fan",
+          documentNumber,
+          from,
+          to,
+          tips,
+          brutCents,
+          fraisCents,
+          netCents,
+        });
 
-  // Upload to Storage.
-  const bucket = admin.storage().bucket();
-  const filePath = `statements/${uid}/${stmtRef.id}.${format}`;
-  const file = bucket.file(filePath);
-  await file.save(body, {
-    contentType: format === "csv" ? "text/csv" : "application/pdf",
-    metadata: { metadata: { djId, documentNumber } },
-  });
-
-  const [downloadUrl] = await file.getSignedUrl({
-    action: "read",
-    expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-  });
+  const downloadUrl = await uploadStatement(uid, stmtRef.id, format, body, djId, documentNumber);
 
   await stmtRef.set({
     documentNumber,
+    kind: "dj",
     djId,
     djOwnerUid: uid,
     djName,
@@ -225,7 +255,7 @@ export const generateTipStatement = onCall(async (req) => {
     brutCents,
     fraisCents,
     netCents,
-    storagePath: filePath,
+    storagePath: `statements/${uid}/${stmtRef.id}.${format}`,
     status: "certified",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
@@ -239,5 +269,91 @@ export const generateTipStatement = onCall(async (req) => {
     brutCents,
     fraisCents,
     netCents,
+  };
+});
+
+/**
+ * Generates a receipt (PDF or CSV) of the tips the calling fan has actually
+ * paid (captured) over a date range. Same storage/signing model as the DJ
+ * statement; the verification record is owned by the fan.
+ */
+export const generateFanStatement = onCall(async (req) => {
+  const uid = requireUid(req);
+  const format = str(req.data?.format).toLowerCase() === "csv" ? "csv" : "pdf";
+
+  const now = new Date();
+  const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+  const from = parseDate(req.data?.from, defaultFrom);
+  const to = parseDate(req.data?.to, now);
+  const toEnd = new Date(to);
+  toEnd.setHours(23, 59, 59, 999);
+
+  const snap = await db()
+    .collection("tips")
+    .where("fanUid", "==", uid)
+    .where("status", "==", "captured")
+    .orderBy("createdAt", "desc")
+    .get();
+
+  const tips: StatementTip[] = snap.docs
+    .map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        date: data.createdAt?.toDate?.() ?? new Date(),
+        amountCents: typeof data.amountCents === "number" ? data.amountCents : 0,
+        counterparty: typeof data.djName === "string" && data.djName ? data.djName : "DJ",
+      };
+    })
+    .filter((t) => t.date >= from && t.date <= toEnd);
+
+  const totalCents = tips.reduce((s, t) => s + t.amountCents, 0);
+
+  const stmtRef = db().collection("statements").doc();
+  const documentNumber = makeDocNumber("RF", now, stmtRef.id);
+  const fanSnap = await db().collection("users").doc(uid).get();
+  const fanName = str(fanSnap.data()?.name) || "Fan";
+
+  const body =
+    format === "csv"
+      ? Buffer.from(buildCsv(tips, "DJ"), "utf8")
+      : await buildPdf({
+          title: "Reçu de tips envoyés",
+          subjectLabel: "Fan",
+          subjectName: fanName,
+          counterpartyLabel: "DJ",
+          documentNumber,
+          from,
+          to,
+          tips,
+          brutCents: totalCents,
+          fraisCents: 0,
+          netCents: totalCents,
+        });
+
+  const downloadUrl = await uploadStatement(uid, stmtRef.id, format, body, uid, documentNumber);
+
+  await stmtRef.set({
+    documentNumber,
+    kind: "fan",
+    fanUid: uid,
+    fanName,
+    format,
+    from: admin.firestore.Timestamp.fromDate(from),
+    to: admin.firestore.Timestamp.fromDate(to),
+    tipCount: tips.length,
+    totalCents,
+    storagePath: `statements/${uid}/${stmtRef.id}.${format}`,
+    status: "certified",
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return {
+    statementId: stmtRef.id,
+    documentNumber,
+    format,
+    downloadUrl,
+    tipCount: tips.length,
+    totalCents,
   };
 });
