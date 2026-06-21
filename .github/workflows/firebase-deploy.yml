@@ -1,0 +1,63 @@
+name: Deploy Firebase
+
+# Deploys Cloud Functions, Firestore rules/indexes and Storage rules for the
+# money-pullup-flutter project whenever its backend files change on main.
+# Manual runs are also supported via the "Run workflow" button.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "artifacts/money-pullup-flutter/functions/**"
+      - "artifacts/money-pullup-flutter/firestore.rules"
+      - "artifacts/money-pullup-flutter/firestore.indexes.json"
+      - "artifacts/money-pullup-flutter/storage.rules"
+      - "artifacts/money-pullup-flutter/firebase.json"
+      - ".github/workflows/firebase-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: artifacts/money-pullup-flutter
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: artifacts/money-pullup-flutter/functions/package-lock.json
+
+      - name: Install function dependencies
+        working-directory: artifacts/money-pullup-flutter/functions
+        run: npm ci
+
+      - name: Build functions
+        working-directory: artifacts/money-pullup-flutter/functions
+        run: npm run build
+
+      - name: Write service account credentials
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+
+      - name: Deploy to Firebase
+        run: >
+          npx --yes firebase-tools@14 deploy
+          --only functions,firestore:rules,firestore:indexes,storage
+          --project money-pull-up-5378b
+          --non-interactive
+          --force
+
+      - name: Clean up credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
