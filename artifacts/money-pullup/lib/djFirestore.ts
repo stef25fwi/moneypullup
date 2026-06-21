@@ -21,6 +21,9 @@ export interface DjProfile {
   email?: string;
   phone?: string;
   ibanProvided?: boolean;
+  /** Aggregate rating (maintained by Cloud Functions). */
+  ratingAvg?: number;
+  ratingCount?: number;
 }
 
 /** Live subscription to a single DJ profile document. */

@@ -1,4 +1,4 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
@@ -24,7 +24,9 @@ import { GlowBackground } from "@/components/GlowBackground";
 import { useColors } from "@/hooks/useColors";
 import { useDjWallet } from "@/hooks/useDjWallet";
 import { firebaseAuth, isFirebaseConfigured } from "@/lib/firebase";
+import { subscribeDjBookings } from "@/lib/bookings";
 import { subscribeDjProfile, type DjProfile } from "@/lib/djFirestore";
+import { subscribeDjReviews, type Review } from "@/lib/reviews";
 import { generateTipStatement, type TipStatement } from "@/lib/tipFunctions";
 import { subscribeReceivedTipsForDj, type StreamTip } from "@/lib/tipStream";
 
@@ -49,6 +51,8 @@ export default function DjProfilePage() {
   const [djId, setDjId] = useState<string | null>(null);
   const [profile, setProfile] = useState<DjProfile | null>(null);
   const [tips, setTips] = useState<StreamTip[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [eventsCount, setEventsCount] = useState(0);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -59,9 +63,17 @@ export default function DjProfilePage() {
     if (!djId || !isFirebaseConfigured()) return;
     const unsubProfile = subscribeDjProfile(djId, setProfile);
     const unsubTips = subscribeReceivedTipsForDj(djId, setTips, () => {});
+    const unsubReviews = subscribeDjReviews(djId, setReviews, () => {});
+    const unsubBookings = subscribeDjBookings(
+      djId,
+      (b) => setEventsCount(b.filter((x) => x.status === "accepted").length),
+      () => {},
+    );
     return () => {
       unsubProfile();
       unsubTips();
+      unsubReviews();
+      unsubBookings();
     };
   }, [djId]);
 
@@ -116,7 +128,15 @@ export default function DjProfilePage() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
       >
-        {tab === "profil" && <ProfilTab profile={profile} wallet={wallet} colors={colors} />}
+        {tab === "profil" && (
+          <ProfilTab
+            profile={profile}
+            wallet={wallet}
+            reviews={reviews}
+            eventsCount={eventsCount}
+            colors={colors}
+          />
+        )}
         {tab === "tips" && (
           <TipsTab tips={tips} colors={colors} onGenerate={() => setTab("justificatifs")} />
         )}
@@ -136,10 +156,14 @@ type Colors = ReturnType<typeof useColors>;
 function ProfilTab({
   profile,
   wallet,
+  reviews,
+  eventsCount,
   colors,
 }: {
   profile: DjProfile | null;
   wallet: ReturnType<typeof useDjWallet>;
+  reviews: Review[];
+  eventsCount: number;
   colors: Colors;
 }) {
   const name = profile?.name || "DJ";
@@ -148,6 +172,8 @@ function ProfilTab({
   const genres = profile?.genres && profile.genres.length > 0 ? profile.genres : [];
   const avatar = profile?.avatarUrl || DEFAULT_AVATAR;
   const verified = profile?.verified ?? (profile?.chargesEnabled && profile?.payoutsEnabled);
+  const ratingAvg = profile?.ratingAvg ?? 0;
+  const ratingCount = profile?.ratingCount ?? 0;
 
   return (
     <Animated.View entering={FadeIn.duration(250)} style={styles.tabContent}>
@@ -196,11 +222,16 @@ function ProfilTab({
 
       {/* Stats */}
       <GlassCard style={styles.statsCard}>
-        <Stat value="—" label="Note moyenne" colors={colors} accent={colors.gold} />
+        <Stat
+          value={ratingCount > 0 ? `${ratingAvg}/5` : "—"}
+          label={ratingCount > 0 ? `${ratingCount} avis` : "Note moyenne"}
+          colors={colors}
+          accent={colors.gold}
+        />
         <View style={[styles.statDivider, { backgroundColor: colors.glassBorder }]} />
         <Stat value={`${wallet.count}`} label="tips" colors={colors} accent={colors.neonGreen} />
         <View style={[styles.statDivider, { backgroundColor: colors.glassBorder }]} />
-        <Stat value="—" label="événements" colors={colors} accent={colors.neonPink} />
+        <Stat value={`${eventsCount}`} label="événements" colors={colors} accent={colors.neonPink} />
       </GlassCard>
 
       {/* Actions */}
@@ -240,6 +271,39 @@ function ProfilTab({
           Contact via la messagerie sécurisée
         </Text>
       </View>
+
+      {/* Reviews */}
+      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+        AVIS {ratingCount > 0 ? `(${ratingCount})` : ""}
+      </Text>
+      {reviews.length === 0 ? (
+        <GlassCard style={styles.infoCard}>
+          <Text style={[styles.secureText, { color: colors.mutedForeground, textAlign: "center" }]}>
+            Aucun avis pour le moment.
+          </Text>
+        </GlassCard>
+      ) : (
+        reviews.slice(0, 10).map((r) => (
+          <GlassCard key={r.id} style={styles.reviewCard}>
+            <View style={styles.reviewHead}>
+              <Text style={[styles.reviewName, { color: colors.foreground }]}>{r.fanName}</Text>
+              <View style={styles.reviewStars}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <FontAwesome
+                    key={n}
+                    name={n <= r.rating ? "star" : "star-o"}
+                    size={12}
+                    color={n <= r.rating ? "#FFD700" : colors.mutedForeground}
+                  />
+                ))}
+              </View>
+            </View>
+            {r.comment ? (
+              <Text style={[styles.reviewComment, { color: colors.mutedForeground }]}>{r.comment}</Text>
+            ) : null}
+          </GlassCard>
+        ))
+      )}
     </Animated.View>
   );
 }
@@ -847,6 +911,12 @@ const styles = StyleSheet.create({
 
   secureRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 4 },
   secureText: { fontSize: 11, fontFamily: "Inter_400Regular" },
+
+  reviewCard: { padding: 14, gap: 6 },
+  reviewHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  reviewName: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  reviewStars: { flexDirection: "row", gap: 2 },
+  reviewComment: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
 
   /* Tips */
   periodRow: { flexDirection: "row", gap: 8 },

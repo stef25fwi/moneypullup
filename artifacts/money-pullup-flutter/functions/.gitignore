@@ -1,5 +1,6 @@
 node_modules/
-lib/
+# Build output only — anchored so it doesn't match src/lib/
+/lib/
 *.local
 .env
 .env.*
