@@ -1,0 +1,11 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Certified statements (and all other objects) are written by Cloud
+    // Functions and served to clients only via short-lived signed URLs.
+    // No direct client read/write access.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

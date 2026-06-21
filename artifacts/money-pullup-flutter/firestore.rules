@@ -39,5 +39,12 @@ service cloud.firestore {
             || request.auth.uid == resource.data.djOwnerUid);
       allow write: if false;
     }
+
+    // Certified statements are generated exclusively by Cloud Functions.
+    // The owning DJ may read their own; nobody writes from the client.
+    match /statements/{statementId} {
+      allow read: if signedIn() && request.auth.uid == resource.data.djOwnerUid;
+      allow write: if false;
+    }
   }
 }

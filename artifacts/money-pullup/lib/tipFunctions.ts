@@ -53,3 +53,23 @@ export function createDjOnboardingLink(args: {
 export function getDjAccountStatus(djId: string): Promise<AccountStatus> {
   return call<{ djId: string }, AccountStatus>("getDjAccountStatus", { djId });
 }
+
+export interface TipStatement {
+  statementId: string;
+  documentNumber: string;
+  format: "pdf" | "csv";
+  downloadUrl: string;
+  tipCount: number;
+  brutCents: number;
+  fraisCents: number;
+  netCents: number;
+}
+
+export function generateTipStatement(args: {
+  djId: string;
+  format: "pdf" | "csv";
+  from?: string;
+  to?: string;
+}): Promise<TipStatement> {
+  return call<typeof args, TipStatement>("generateTipStatement", args);
+}

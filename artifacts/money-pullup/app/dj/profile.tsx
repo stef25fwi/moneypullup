@@ -1,10 +1,13 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Linking from "expo-linking";
 import { router, Stack } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   ImageBackground,
   Platform,
   ScrollView,
@@ -22,6 +25,7 @@ import { useColors } from "@/hooks/useColors";
 import { useDjWallet } from "@/hooks/useDjWallet";
 import { firebaseAuth, isFirebaseConfigured } from "@/lib/firebase";
 import { subscribeDjProfile, type DjProfile } from "@/lib/djFirestore";
+import { generateTipStatement, type TipStatement } from "@/lib/tipFunctions";
 import { subscribeReceivedTipsForDj, type StreamTip } from "@/lib/tipStream";
 
 type SubTab = "profil" | "tips" | "justificatifs" | "verification";
@@ -113,9 +117,11 @@ export default function DjProfilePage() {
         showsVerticalScrollIndicator={false}
       >
         {tab === "profil" && <ProfilTab profile={profile} wallet={wallet} colors={colors} />}
-        {tab === "tips" && <TipsTab tips={tips} colors={colors} />}
+        {tab === "tips" && (
+          <TipsTab tips={tips} colors={colors} onGenerate={() => setTab("justificatifs")} />
+        )}
         {tab === "justificatifs" && (
-          <JustificatifsTab profile={profile} wallet={wallet} colors={colors} />
+          <JustificatifsTab djId={djId} profile={profile} wallet={wallet} colors={colors} />
         )}
         {tab === "verification" && <VerificationTab profile={profile} colors={colors} />}
       </ScrollView>
@@ -284,7 +290,15 @@ function InfoRow({
 const PERIODS = ["7j", "30j", "Mois", "Tout"] as const;
 type Period = (typeof PERIODS)[number];
 
-function TipsTab({ tips, colors }: { tips: StreamTip[]; colors: Colors }) {
+function TipsTab({
+  tips,
+  colors,
+  onGenerate,
+}: {
+  tips: StreamTip[];
+  colors: Colors;
+  onGenerate: () => void;
+}) {
   const [period, setPeriod] = useState<Period>("30j");
 
   const filtered = useMemo(() => {
@@ -369,7 +383,7 @@ function TipsTab({ tips, colors }: { tips: StreamTip[]; colors: Colors }) {
         )}
       </GlassCard>
 
-      <TouchableOpacity activeOpacity={0.85} style={styles.primaryBtn}>
+      <TouchableOpacity activeOpacity={0.85} onPress={onGenerate} style={styles.primaryBtn}>
         <LinearGradient colors={["#3B82F6", "#1D4ED8"]} style={styles.primaryBtnGrad}>
           <Feather name="file-plus" size={17} color="#fff" />
           <Text style={styles.primaryBtnText}>Générer un relevé</Text>
@@ -405,24 +419,67 @@ function StatBox({
 
 /* ───────────────────────── 3. JUSTIFICATIFS ───────────────────────── */
 
+function startOfMonth(): Date {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
 function JustificatifsTab({
+  djId,
   profile,
   wallet,
   colors,
 }: {
+  djId: string | null;
   profile: DjProfile | null;
   wallet: ReturnType<typeof useDjWallet>;
   colors: Colors;
 }) {
   const [format, setFormat] = useState<"PDF" | "CSV">("PDF");
-  const brut = wallet.totalReceived;
-  const frais = Math.round(brut * 0.09);
-  const net = brut - frais;
+  const [generating, setGenerating] = useState(false);
+  const [result, setResult] = useState<TipStatement | null>(null);
 
-  const today = new Date();
-  const docNo = `RC-${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
-    wallet.count,
-  ).padStart(5, "0")}`;
+  const from = useMemo(() => startOfMonth(), []);
+  const to = useMemo(() => new Date(), []);
+
+  // Live preview totals (replaced by server-authoritative figures after generate).
+  const brut = result ? result.brutCents / 100 : wallet.totalReceived;
+  const frais = result ? result.fraisCents / 100 : Math.round(wallet.totalReceived * 0.09);
+  const net = result ? result.netCents / 100 : brut - frais;
+  const count = result ? result.tipCount : wallet.count;
+
+  const handleGenerate = useCallback(async () => {
+    if (!djId) {
+      Alert.alert("Indisponible", "Connectez-vous en tant que DJ pour générer un relevé.");
+      return;
+    }
+    setGenerating(true);
+    try {
+      const stmt = await generateTipStatement({
+        djId,
+        format: format === "PDF" ? "pdf" : "csv",
+        from: from.toISOString(),
+        to: to.toISOString(),
+      });
+      setResult(stmt);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {
+      Alert.alert("Génération impossible", e instanceof Error ? e.message : "Réessayez plus tard.");
+    } finally {
+      setGenerating(false);
+    }
+  }, [djId, format, from, to]);
+
+  const handleDownload = useCallback(async () => {
+    if (!result?.downloadUrl) return;
+    try {
+      await Linking.openURL(result.downloadUrl);
+    } catch {
+      Alert.alert("Téléchargement impossible", "Impossible d'ouvrir le document.");
+    }
+  }, [result]);
+
+  const periodLabel = `${fmtFr(from)} – ${fmtFr(to)}`;
 
   return (
     <Animated.View entering={FadeIn.duration(250)} style={styles.tabContent}>
@@ -438,14 +495,14 @@ function JustificatifsTab({
             <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Du</Text>
             <View style={[styles.dateBox, { borderColor: colors.glassBorder }]}>
               <Feather name="calendar" size={13} color={colors.mutedForeground} />
-              <Text style={[styles.dateValue, { color: colors.foreground }]}>01/04/2025</Text>
+              <Text style={[styles.dateValue, { color: colors.foreground }]}>{fmtFr(from)}</Text>
             </View>
           </View>
           <View style={styles.dateField}>
             <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Au</Text>
             <View style={[styles.dateBox, { borderColor: colors.glassBorder }]}>
               <Feather name="calendar" size={13} color={colors.mutedForeground} />
-              <Text style={[styles.dateValue, { color: colors.foreground }]}>30/04/2025</Text>
+              <Text style={[styles.dateValue, { color: colors.foreground }]}>{fmtFr(to)}</Text>
             </View>
           </View>
         </View>
@@ -458,7 +515,7 @@ function JustificatifsTab({
             return (
               <TouchableOpacity
                 key={f}
-                onPress={() => setFormat(f)}
+                onPress={() => { setFormat(f); setResult(null); }}
                 style={[
                   styles.formatBtn,
                   {
@@ -482,51 +539,85 @@ function JustificatifsTab({
 
         {/* Totals */}
         <View style={[styles.totalsRow, { borderTopColor: colors.glassBorder }]}>
-          <Total label="Nb de tips" value={`${wallet.count}`} colors={colors} />
+          <Total label="Nb de tips" value={`${count}`} colors={colors} />
           <Total label="Brut" value={`${brut} €`} colors={colors} />
           <Total label="Frais" value={`${frais} €`} colors={colors} />
           <Total label="Net" value={`${net} €`} colors={colors} />
         </View>
-      </GlassCard>
 
-      {/* Generated document preview */}
-      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>DOCUMENT GÉNÉRÉ</Text>
-      <GlassCard style={styles.docCard}>
-        <DocRow label="N° document" value={docNo} colors={colors} mono />
-        <DocRow label="Date d'édition" value={today.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })} colors={colors} />
-        <DocRow label="Période" value="01/04/2025 – 30/04/2025" colors={colors} />
-        <DocRow label="DJ" value={profile?.name || "DJ"} colors={colors} />
-        <View style={styles.docStatusRow}>
-          <Text style={[styles.docLabel, { color: colors.mutedForeground }]}>Statut</Text>
-          <View style={[styles.certifiedPill, { backgroundColor: colors.neonGreen + "22", borderColor: colors.neonGreen }]}>
-            <Feather name="check-circle" size={11} color={colors.neonGreen} />
-            <Text style={[styles.certifiedText, { color: colors.neonGreen }]}>Certifié</Text>
-          </View>
-        </View>
-
-        <View style={styles.qrRow}>
-          <View style={styles.qrPlaceholder}>
-            <MaterialCommunityIcons name="qrcode" size={48} color={colors.foreground} />
-          </View>
-          <Text style={[styles.qrCaption, { color: colors.mutedForeground }]}>QR vérification</Text>
-        </View>
-
-        <TouchableOpacity activeOpacity={0.85} style={styles.primaryBtn}>
+        {/* Generate */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={handleGenerate}
+          disabled={generating}
+          style={[styles.primaryBtn, { marginTop: 4, opacity: generating ? 0.7 : 1 }]}
+        >
           <LinearGradient colors={["#3B82F6", "#1D4ED8"]} style={styles.primaryBtnGrad}>
-            <Feather name="download" size={17} color="#fff" />
-            <Text style={styles.primaryBtnText}>Télécharger le {format}</Text>
+            {generating ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Feather name="file-plus" size={17} color="#fff" />
+            )}
+            <Text style={styles.primaryBtnText}>
+              {generating ? "Génération…" : "Générer le relevé"}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
-
-        <View style={styles.attestRow}>
-          <Feather name="info" size={12} color={colors.mutedForeground} />
-          <Text style={[styles.attestText, { color: colors.mutedForeground }]}>
-            Ce document atteste les transactions enregistrées par la plateforme.
-          </Text>
-        </View>
       </GlassCard>
+
+      {/* Generated document */}
+      {result && (
+        <>
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>DOCUMENT GÉNÉRÉ</Text>
+          <GlassCard style={styles.docCard}>
+            <DocRow label="N° document" value={result.documentNumber} colors={colors} mono />
+            <DocRow
+              label="Date d'édition"
+              value={new Date().toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+              colors={colors}
+            />
+            <DocRow label="Période" value={periodLabel} colors={colors} />
+            <DocRow label="DJ" value={profile?.name || "DJ"} colors={colors} />
+            <DocRow label="Format" value={result.format.toUpperCase()} colors={colors} />
+            <View style={styles.docStatusRow}>
+              <Text style={[styles.docLabel, { color: colors.mutedForeground }]}>Statut</Text>
+              <View style={[styles.certifiedPill, { backgroundColor: colors.neonGreen + "22", borderColor: colors.neonGreen }]}>
+                <Feather name="check-circle" size={11} color={colors.neonGreen} />
+                <Text style={[styles.certifiedText, { color: colors.neonGreen }]}>Certifié</Text>
+              </View>
+            </View>
+
+            <View style={styles.qrRow}>
+              <View style={styles.qrPlaceholder}>
+                <MaterialCommunityIcons name="qrcode" size={48} color="#130028" />
+              </View>
+              <Text style={[styles.qrCaption, { color: colors.mutedForeground }]}>
+                N° {result.documentNumber}
+              </Text>
+            </View>
+
+            <TouchableOpacity activeOpacity={0.85} onPress={handleDownload} style={styles.primaryBtn}>
+              <LinearGradient colors={["#3B82F6", "#1D4ED8"]} style={styles.primaryBtnGrad}>
+                <Feather name="download" size={17} color="#fff" />
+                <Text style={styles.primaryBtnText}>Télécharger le {result.format.toUpperCase()}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={styles.attestRow}>
+              <Feather name="info" size={12} color={colors.mutedForeground} />
+              <Text style={[styles.attestText, { color: colors.mutedForeground }]}>
+                Ce document atteste les transactions enregistrées par la plateforme.
+              </Text>
+            </View>
+          </GlassCard>
+        </>
+      )}
     </Animated.View>
   );
+}
+
+function fmtFr(d: Date): string {
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function Total({ label, value, colors }: { label: string; value: string; colors: Colors }) {
