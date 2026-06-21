@@ -7,6 +7,12 @@ export interface TipIntent {
   clientSecret: string;
 }
 
+export interface AccountStatus {
+  detailsSubmitted: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+}
+
 function call<T, R>(name: string, payload: T): Promise<R> {
   const fn = httpsCallable<T, R>(firebaseFunctions(), name);
   return fn(payload).then((res) => res.data);
@@ -42,4 +48,8 @@ export function createDjOnboardingLink(args: {
   returnUrl: string;
 }): Promise<{ url: string }> {
   return call<typeof args, { url: string }>("createDjOnboardingLink", args);
+}
+
+export function getDjAccountStatus(djId: string): Promise<AccountStatus> {
+  return call<{ djId: string }, AccountStatus>("getDjAccountStatus", { djId });
 }

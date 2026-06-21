@@ -1,7 +1,8 @@
 import { Feather, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useCallback, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -16,7 +17,6 @@ import Animated, {
   useSharedValue,
   withSequence,
   withSpring,
-  withTiming,
   FadeIn,
   FadeOut,
   Layout,
@@ -32,8 +32,18 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
 import { useDjInbox } from "@/hooks/useDjInbox";
 import { useDjWallet } from "@/hooks/useDjWallet";
+import { firebaseAuth, isFirebaseConfigured } from "@/lib/firebase";
+import { updateDjProfile } from "@/lib/djFirestore";
 
-function AcceptTipCard({ tip, onAccept }: { tip: Tip; onAccept: (id: string) => void }) {
+function AcceptTipCard({
+  tip,
+  onAccept,
+  onRefuse,
+}: {
+  tip: Tip;
+  onAccept: (id: string) => void;
+  onRefuse: (id: string) => void;
+}) {
   const colors = useColors();
   const scale = useSharedValue(1);
 
@@ -41,6 +51,11 @@ function AcceptTipCard({ tip, onAccept }: { tip: Tip; onAccept: (id: string) => 
     scale.value = withSequence(withSpring(0.94, { damping: 8 }), withSpring(1.06, { damping: 8 }), withSpring(1, { damping: 10 }));
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setTimeout(() => onAccept(tip.id), 250);
+  };
+
+  const handleRefuse = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onRefuse(tip.id);
   };
 
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -71,18 +86,29 @@ function AcceptTipCard({ tip, onAccept }: { tip: Tip; onAccept: (id: string) => 
           </View>
         </View>
 
-        <Animated.View style={animStyle}>
+        <View style={styles.pendingActions}>
           <TouchableOpacity
-            onPress={handleAccept}
-            style={[styles.acceptBtn, { backgroundColor: glowColor, shadowColor: glowColor }]}
-            activeOpacity={0.85}
+            onPress={handleRefuse}
+            style={[styles.refuseBtn, { borderColor: "#EF4444" }]}
+            activeOpacity={0.8}
           >
-            <MaterialCommunityIcons name="cash-check" size={20} color={glowColor === colors.gold ? "#000" : "#fff"} />
-            <Text style={[styles.acceptBtnText, { color: glowColor === colors.gold ? "#000" : "#fff" }]}>
-              ACCEPTER LE MONEY PULL-UP
-            </Text>
+            <MaterialCommunityIcons name="close-circle-outline" size={18} color="#EF4444" />
+            <Text style={[styles.refuseBtnText, { color: "#EF4444" }]}>REFUSER</Text>
           </TouchableOpacity>
-        </Animated.View>
+
+          <Animated.View style={[animStyle, { flex: 1 }]}>
+            <TouchableOpacity
+              onPress={handleAccept}
+              style={[styles.acceptBtn, { backgroundColor: glowColor, shadowColor: glowColor }]}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name="cash-check" size={20} color={glowColor === colors.gold ? "#000" : "#fff"} />
+              <Text style={[styles.acceptBtnText, { color: glowColor === colors.gold ? "#000" : "#fff" }]}>
+                ACCEPTER
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
       </GlassCard>
     </Animated.View>
   );
@@ -100,32 +126,57 @@ export default function DJScreen() {
   const inbox = useDjInbox();
   const djWallet = useDjWallet();
 
-  const [activeDJId, setActiveDJId] = useState("dj1");
+  // Use Firebase Auth UID as the DJ's canonical ID when Firebase is configured.
+  const [authDjId, setAuthDjId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+    return onAuthStateChanged(firebaseAuth(), (user) => setAuthDjId(user?.uid ?? null));
+  }, []);
+  const activeDJId = authDjId ?? "dj1";
+
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(currentDJName);
   const [editingSocial, setEditingSocial] = useState(false);
   const [socialDraft, setSocialDraft] = useState<SocialLinks>({ instagram: "", tiktok: "", facebook: "" });
   const [walletOpen, setWalletOpen] = useState(false);
+  const [isLive, setIsLive] = useState(false);
 
   const myDj = djs.find((d) => d.id === activeDJId);
   const myTips = getTipsForDJ(activeDJId);
   // When Firebase is configured, pending (held) tips come live from Firestore.
   const pendingTips = inbox.active ? inbox.pendingTips : getPendingTipsForDJ(activeDJId);
   const handleAcceptTip = inbox.active ? inbox.accept : acceptTip;
+  const handleRefuseTip = inbox.active ? inbox.refuse : (id: string) => {};
   const acceptedTips = myTips.filter((t) => t.status === "accepted");
   // DJ wallet: real total of captured tips when the backend is configured.
   const myBalance = djWallet.active ? djWallet.totalReceived : getDJBalance(activeDJId);
   const acceptedCount = djWallet.active ? djWallet.count : acceptedTips.length;
-  const avgTip = acceptedCount > 0 ? myBalance / acceptedCount : 0;
   const biggestTip = acceptedTips.length > 0 ? Math.max(...acceptedTips.map((t) => t.amount)) : 0;
   const recordTip = djWallet.active ? djWallet.biggest : biggestTip;
+  // Live status: use local state for Firebase mode (persisted to Firestore), context for mock mode.
+  const djIsLive = inbox.active ? isLive : (myDj?.isLive ?? false);
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
 
   const handleSaveName = useCallback(() => {
-    if (nameInput.trim()) setCurrentDJName(nameInput.trim().toUpperCase());
+    const name = nameInput.trim().toUpperCase();
+    if (name) {
+      setCurrentDJName(name);
+      updateDjProfile(activeDJId, { name }).catch(() => {});
+    }
     setEditingName(false);
-  }, [nameInput, setCurrentDJName]);
+  }, [nameInput, setCurrentDJName, activeDJId]);
+
+  const handleToggleLive = useCallback(() => {
+    if (inbox.active) {
+      const next = !isLive;
+      setIsLive(next);
+      updateDjProfile(activeDJId, { isLive: next }).catch(() => {});
+    } else {
+      toggleDJLive(activeDJId);
+    }
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, [inbox.active, isLive, activeDJId, toggleDJLive]);
 
   const handleEditSocial = useCallback(() => {
     setSocialDraft(myDj?.socialLinks ?? { instagram: "", tiktok: "", facebook: "" });
@@ -134,6 +185,7 @@ export default function DJScreen() {
 
   const handleSaveSocial = useCallback(() => {
     updateDJSocialLinks(activeDJId, socialDraft);
+    updateDjProfile(activeDJId, { socialLinks: socialDraft }).catch(() => {});
     setEditingSocial(false);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [activeDJId, socialDraft, updateDJSocialLinks]);
@@ -200,41 +252,20 @@ export default function DJScreen() {
 
             {/* Live toggle */}
             <TouchableOpacity
-              onPress={() => {
-                toggleDJLive(activeDJId);
-                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              }}
+              onPress={handleToggleLive}
               activeOpacity={0.85}
               style={[
                 styles.liveToggle,
-                { backgroundColor: myDj?.isLive ? "#FF2D78" : colors.glassBackground, borderColor: myDj?.isLive ? "#FF2D78" : colors.glassBorder },
+                { backgroundColor: djIsLive ? "#FF2D78" : colors.glassBackground, borderColor: djIsLive ? "#FF2D78" : colors.glassBorder },
               ]}
             >
-              {myDj?.isLive && <View style={styles.livePulse} />}
-              <Text style={[styles.liveChipText, { color: myDj?.isLive ? "#fff" : colors.mutedForeground }]}>
-                {myDj?.isLive ? "EN DIRECT" : "OFFLINE"}
+              {djIsLive && <View style={styles.livePulse} />}
+              <Text style={[styles.liveChipText, { color: djIsLive ? "#fff" : colors.mutedForeground }]}>
+                {djIsLive ? "EN DIRECT" : "OFFLINE"}
               </Text>
-              <Feather name="radio" size={12} color={myDj?.isLive ? "#fff" : colors.mutedForeground} />
+              <Feather name="radio" size={12} color={djIsLive ? "#fff" : colors.mutedForeground} />
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* DJ Switcher */}
-        <View style={styles.djSwitcher}>
-          {djs.map((dj) => (
-            <TouchableOpacity key={dj.id} onPress={() => setActiveDJId(dj.id)} style={{ flex: 1 }}>
-              <GlassCard
-                style={[styles.djTab, { borderColor: activeDJId === dj.id ? colors.violet : colors.glassBorder }]}
-                borderColor={activeDJId === dj.id ? colors.violet : colors.glassBorder}
-                intensity={activeDJId === dj.id ? 60 : 30}
-              >
-                <Text style={styles.djTabAvatar}>{dj.avatar}</Text>
-                <Text style={[styles.djTabName, { color: activeDJId === dj.id ? colors.violet : colors.mutedForeground }]} numberOfLines={1}>
-                  {dj.name.split(" ").slice(-1)[0]}
-                </Text>
-              </GlassCard>
-            </TouchableOpacity>
-          ))}
         </View>
 
         {/* Balance card */}
@@ -278,7 +309,7 @@ export default function DJScreen() {
               <Text style={styles.profileCardName}>{myDj?.name ?? "—"}</Text>
               <Text style={styles.profileCardGenre}>{myDj?.genre ?? ""}</Text>
             </View>
-            {myDj?.isLive && (
+            {djIsLive && (
               <View style={styles.profileLiveBadge}>
                 <View style={styles.profileLiveDot} />
                 <Text style={styles.profileLiveText}>LIVE</Text>
@@ -353,7 +384,7 @@ export default function DJScreen() {
             </View>
             <View style={styles.tipsList}>
               {pendingTips.map((tip) => (
-                <AcceptTipCard key={tip.id} tip={tip} onAccept={handleAcceptTip} />
+                <AcceptTipCard key={tip.id} tip={tip} onAccept={handleAcceptTip} onRefuse={handleRefuseTip} />
               ))}
             </View>
           </>
@@ -570,6 +601,12 @@ const styles = StyleSheet.create({
   pendingMessage: { fontSize: 12, fontFamily: "Inter_400Regular", fontStyle: "italic", marginTop: 2 },
   pendingChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
   pendingChipText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 },
+  pendingActions: { flexDirection: "row", gap: 10 },
+  refuseBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    paddingVertical: 13, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1.5,
+  },
+  refuseBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
   acceptBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
     paddingVertical: 14, borderRadius: 14,
