@@ -334,6 +334,14 @@ export default function DJScreen() {
               <Feather name="user" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
 
+            {/* Bookings page button */}
+            <TouchableOpacity
+              onPress={() => router.navigate("/dj/bookings")}
+              style={[styles.iconBtn, { backgroundColor: colors.glassBackground, borderColor: colors.glassBorder }]}
+            >
+              <Feather name="calendar" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+
             {/* Wallet button */}
             <TouchableOpacity
               onPress={() => setWalletOpen(true)}

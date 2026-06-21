@@ -1,31 +1,12 @@
 import { onCall, HttpsError, type CallableRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import { commissionCents, getStripe } from "./lib/stripe";
+import { notifyUser } from "./lib/notify";
 
 const db = () => admin.firestore();
 
 const MIN_CENTS = 100; // 1 €
 const MAX_CENTS = 50000; // 500 €
-
-/**
- * Sends an Expo push notification to the fan if they have registered a token.
- * Non-fatal — failures are swallowed so they never block a capture/cancel.
- */
-async function notifyFan(fanUid: string, title: string, body: string): Promise<void> {
-  try {
-    const snap = await db().collection("users").doc(fanUid).get();
-    const token = snap.data()?.expoPushToken;
-    if (!token || typeof token !== "string") return;
-
-    await fetch("https://exp.host/--/api/v2/push/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ to: token, title, body, sound: "default" }),
-    });
-  } catch {
-    // Non-fatal
-  }
-}
 
 function requireUid(req: CallableRequest): string {
   const uid = req.auth?.uid;
@@ -158,7 +139,7 @@ export const acceptTip = onCall(async (req) => {
 
   const amountEur = (tip.amountCents / 100).toFixed(0);
   const msg = autoMessage ? `"${autoMessage}"` : "Merci pour votre soutien ! 🎧";
-  await notifyFan(
+  await notifyUser(
     tip.fanUid,
     `💚 Tip accepté — ${amountEur}€`,
     `${tip.djName || "Le DJ"} a accepté votre tip. ${msg}`,
@@ -181,7 +162,7 @@ export const refuseTip = onCall(async (req) => {
   );
 
   const amountEur = (tip.amountCents / 100).toFixed(0);
-  await notifyFan(
+  await notifyUser(
     tip.fanUid,
     `❌ Tip refusé — ${amountEur}€`,
     `${tip.djName || "Le DJ"} n'a pas accepté votre tip. Vous n'avez pas été débité.`,

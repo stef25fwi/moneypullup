@@ -1,4 +1,4 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, Stack, useLocalSearchParams } from "expo-router";
@@ -21,8 +21,10 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BookingModal } from "@/components/BookingModal";
 import { GlassCard } from "@/components/GlassCard";
 import { GlowBackground } from "@/components/GlowBackground";
+import { RatingModal } from "@/components/RatingModal";
 import { TipButton } from "@/components/TipButton";
 import { useColors } from "@/hooks/useColors";
 import { useTipCheckout } from "@/hooks/useTipCheckout";
@@ -42,6 +44,8 @@ export default function DjFanPage() {
   const [selectedAmount, setSelectedAmount] = useState(10);
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [ratingOpen, setRatingOpen] = useState(false);
 
   const btnScale = useSharedValue(1);
   const btnStyle = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }));
@@ -77,6 +81,8 @@ export default function DjFanPage() {
   const djName = dj?.name ?? (djId ?? "DJ");
   const isLive = dj?.isLive ?? false;
   const canTip = dj?.chargesEnabled && dj?.payoutsEnabled;
+  const ratingAvg = dj?.ratingAvg ?? 0;
+  const ratingCount = dj?.ratingCount ?? 0;
 
   return (
     <>
@@ -114,6 +120,14 @@ export default function DjFanPage() {
             <MaterialCommunityIcons name="music-circle" size={28} color="rgba(255,255,255,0.7)" />
             <View style={{ flex: 1 }}>
               <Text style={styles.djName}>{djName.toUpperCase()}</Text>
+              {ratingCount > 0 && (
+                <View style={styles.ratingRow}>
+                  <FontAwesome name="star" size={12} color="#FFD700" />
+                  <Text style={styles.ratingText}>
+                    {ratingAvg}/5 · {ratingCount} avis
+                  </Text>
+                </View>
+              )}
               {isLive && (
                 <View style={styles.liveRow}>
                   <View style={styles.liveDot} />
@@ -219,10 +233,35 @@ export default function DjFanPage() {
                   </View>
                 </GlassCard>
               )}
+
+              {/* Secondary actions */}
+              <View style={styles.secondaryActions}>
+                <TouchableOpacity
+                  onPress={() => setBookingOpen(true)}
+                  style={[styles.secondaryBtn, { backgroundColor: colors.glassBackground, borderColor: colors.glassBorder }]}
+                >
+                  <MaterialCommunityIcons name="calendar-check" size={18} color={colors.primary} />
+                  <Text style={[styles.secondaryText, { color: colors.foreground }]}>Réserver</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setRatingOpen(true)}
+                  style={[styles.secondaryBtn, { backgroundColor: colors.glassBackground, borderColor: colors.glassBorder }]}
+                >
+                  <FontAwesome name="star" size={16} color="#FFD700" />
+                  <Text style={[styles.secondaryText, { color: colors.foreground }]}>Noter</Text>
+                </TouchableOpacity>
+              </View>
             </>
           )}
         </ScrollView>
       </View>
+
+      {djId && (
+        <>
+          <BookingModal visible={bookingOpen} onClose={() => setBookingOpen(false)} djId={djId} djName={djName} />
+          <RatingModal visible={ratingOpen} onClose={() => setRatingOpen(false)} djId={djId} djName={djName} />
+        </>
+      )}
     </>
   );
 }
@@ -242,6 +281,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   djName: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1.5 },
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
+  ratingText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.85)" },
   liveRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#FF0055" },
   liveText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#FF6699", letterSpacing: 2 },
@@ -294,4 +335,17 @@ const styles = StyleSheet.create({
   pendingCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   pendingTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   pendingSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#F59E0B", marginTop: 2 },
+
+  secondaryActions: { flexDirection: "row", gap: 12, marginTop: 16 },
+  secondaryBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  secondaryText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 });
