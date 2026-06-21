@@ -30,7 +30,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
 import { useTipCheckout } from "@/hooks/useTipCheckout";
 
-const PRESET_AMOUNTS = [5, 10, 15, 20];
+const PRESET_AMOUNTS = [2, 5, 10, 20];
 
 const COIN_CONFIG = [
   { color: "#FF4400", highlightColor: "#FF9900", shadowColor: "#AA1100" },

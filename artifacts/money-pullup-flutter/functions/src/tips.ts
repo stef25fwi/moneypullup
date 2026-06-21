@@ -34,7 +34,7 @@ export const createTipPaymentIntent = onCall(async (req) => {
   if (!djSnap.exists || !dj?.stripeAccountId) {
     throw new HttpsError("failed-precondition", "This DJ cannot receive tips yet.");
   }
-  if (!dj.payoutsEnabled) {
+  if (!dj.chargesEnabled || !dj.payoutsEnabled) {
     throw new HttpsError("failed-precondition", "This DJ has not finished Stripe onboarding.");
   }
 
@@ -121,11 +121,21 @@ export const acceptTip = onCall(async (req) => {
   if (tip.status !== "requires_capture") return { status: tip.status };
 
   await getStripe().paymentIntents.capture(tip.stripePaymentIntentId);
+
+  // Fetch the DJ's auto-message to attach to the captured tip.
+  const djSnap = await db().collection("djs").doc(tip.djId).get();
+  const autoMessage = (djSnap.data()?.autoMessage as string | undefined) ?? "";
+
   await ref.set(
-    { status: "captured", acceptedByDj: true, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+    {
+      status: "captured",
+      acceptedByDj: true,
+      djAutoMessage: autoMessage || null,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
     { merge: true },
   );
-  return { status: "captured" };
+  return { status: "captured", djAutoMessage: autoMessage };
 });
 
 /** Step 6B: the DJ refuses → cancel the authorisation. The fan is never charged. */
