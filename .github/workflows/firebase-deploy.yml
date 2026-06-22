@@ -20,6 +20,11 @@ concurrency:
   group: firebase-deploy
   cancel-in-progress: false
 
+# Least-privilege: this workflow only reads the repo; auth to Firebase is via
+# the service-account secret, not the GITHUB_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
