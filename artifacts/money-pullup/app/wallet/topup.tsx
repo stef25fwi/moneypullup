@@ -2,7 +2,9 @@ import { Feather } from "@expo/vector-icons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BottomTabBar, BOTTOM_TAB_BAR_HEIGHT } from "@/components/BottomTabBar";
 import { useTips } from "@/contexts/TipsContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -16,6 +18,7 @@ import { useColors } from "@/hooks/useColors";
  */
 export default function WalletTopUpReturn() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { addFunds } = useTips();
   const params = useLocalSearchParams<{ status?: string; amount?: string }>();
   const status = params.status === "cancel" ? "cancel" : "success";
@@ -35,7 +38,7 @@ export default function WalletTopUpReturn() {
   return (
     <>
       <Stack.Screen options={{ title: success ? "Paiement réussi" : "Paiement annulé" }} />
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: BOTTOM_TAB_BAR_HEIGHT + insets.bottom }]}>
         <View
           style={[
             styles.iconCircle,
@@ -63,6 +66,8 @@ export default function WalletTopUpReturn() {
         >
           <Text style={[styles.btnText, { color: colors.primaryForeground }]}>Retour à l'application</Text>
         </TouchableOpacity>
+
+        <BottomTabBar />
       </View>
     </>
   );

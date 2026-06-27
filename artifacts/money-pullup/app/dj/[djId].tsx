@@ -21,6 +21,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BottomTabBar, BOTTOM_TAB_BAR_HEIGHT } from "@/components/BottomTabBar";
 import { BookingModal } from "@/components/BookingModal";
 import { GlassCard } from "@/components/GlassCard";
 import { GlowBackground } from "@/components/GlowBackground";
@@ -105,7 +106,7 @@ export default function DjFanPage() {
         <ScrollView
           contentContainerStyle={[
             styles.scroll,
-            { paddingTop: 16, paddingBottom: insets.bottom + 40 },
+            { paddingTop: 16, paddingBottom: insets.bottom + BOTTOM_TAB_BAR_HEIGHT + 16 },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -254,6 +255,8 @@ export default function DjFanPage() {
             </>
           )}
         </ScrollView>
+
+        <BottomTabBar />
       </View>
 
       {djId && (

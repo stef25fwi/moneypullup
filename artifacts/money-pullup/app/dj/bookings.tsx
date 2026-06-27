@@ -15,6 +15,7 @@ import {
 import Animated, { FadeIn, Layout } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BottomTabBar, BOTTOM_TAB_BAR_HEIGHT } from "@/components/BottomTabBar";
 import { GlassCard } from "@/components/GlassCard";
 import { GlowBackground } from "@/components/GlowBackground";
 import { useColors } from "@/hooks/useColors";
@@ -79,7 +80,7 @@ export default function DjBookingsPage() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + BOTTOM_TAB_BAR_HEIGHT + 16 }]}
         showsVerticalScrollIndicator={false}
       >
         {bookings.length === 0 && (
@@ -114,6 +115,8 @@ export default function DjBookingsPage() {
           </>
         )}
       </ScrollView>
+
+      <BottomTabBar />
     </View>
   );
 }

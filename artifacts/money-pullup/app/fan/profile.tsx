@@ -20,6 +20,7 @@ import {
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BottomTabBar, BOTTOM_TAB_BAR_HEIGHT } from "@/components/BottomTabBar";
 import { GlassCard } from "@/components/GlassCard";
 import { GlowBackground } from "@/components/GlowBackground";
 import { useColors } from "@/hooks/useColors";
@@ -110,7 +111,7 @@ export default function FanProfilePage() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + BOTTOM_TAB_BAR_HEIGHT + 16 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -118,6 +119,8 @@ export default function FanProfilePage() {
         {tab === "legal" && <LegalTab uid={uid} profile={profile} colors={colors} />}
         {tab === "justificatifs" && <JustificatifsTab uid={uid} profile={profile} colors={colors} />}
       </ScrollView>
+
+      <BottomTabBar />
     </View>
   );
 }
