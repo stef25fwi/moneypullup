@@ -1,5 +1,12 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, signInAnonymously, type Auth } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  signInAnonymously,
+  signInWithEmailAndPassword,
+  signOut,
+  type Auth,
+} from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getFunctions, type Functions } from "firebase/functions";
 
@@ -50,4 +57,18 @@ export async function ensureSignedIn(): Promise<string | null> {
 export function currentUid(): string | null {
   if (!isFirebaseConfigured()) return null;
   return firebaseAuth().currentUser?.uid ?? null;
+}
+
+export async function signInWithEmail(email: string, password: string): Promise<string> {
+  const cred = await signInWithEmailAndPassword(firebaseAuth(), email, password);
+  return cred.user.uid;
+}
+
+export async function signUpWithEmail(email: string, password: string): Promise<string> {
+  const cred = await createUserWithEmailAndPassword(firebaseAuth(), email, password);
+  return cred.user.uid;
+}
+
+export async function signOutUser(): Promise<void> {
+  await signOut(firebaseAuth());
 }
