@@ -5,7 +5,7 @@ import React from "react";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type TabKey = "fan" | "dj" | "history" | "profile";
+type TabKey = "dashboard" | "tips" | "dj" | "profile";
 
 const TABS: {
   key: TabKey;
@@ -17,12 +17,21 @@ const TABS: {
   androidIconMCI?: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 }[] = [
   {
-    key: "fan",
-    label: "Fan",
+    key: "dashboard",
+    label: "Dashboard",
     route: "/(tabs)/",
-    sfIcon: "bolt",
-    sfIconSelected: "bolt.fill",
-    androidIcon: "zap",
+    sfIcon: "square.grid.2x2",
+    sfIconSelected: "square.grid.2x2.fill",
+    androidIcon: null,
+    androidIconMCI: "view-grid",
+  },
+  {
+    key: "tips",
+    label: "Tips",
+    route: "/(tabs)/history",
+    sfIcon: "heart",
+    sfIconSelected: "heart.fill",
+    androidIcon: "heart",
   },
   {
     key: "dj",
@@ -32,14 +41,6 @@ const TABS: {
     sfIconSelected: "music.note",
     androidIcon: null,
     androidIconMCI: "music-circle",
-  },
-  {
-    key: "history",
-    label: "Historique",
-    route: "/(tabs)/history",
-    sfIcon: "clock",
-    sfIconSelected: "clock.fill",
-    androidIcon: "clock",
   },
   {
     key: "profile",
@@ -67,7 +68,7 @@ function resolveActiveTab(pathname: string): TabKey | null {
     return "profile";
   }
   if (pathname.startsWith("/dj/")) {
-    return "fan";
+    return "dashboard";
   }
   return null;
 }
