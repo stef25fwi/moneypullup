@@ -1,4 +1,3 @@
-import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
@@ -40,23 +39,29 @@ function ClassicTabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarActiveTintColor: "#FF2D78",
+        tabBarInactiveTintColor: "rgba(255,255,255,0.45)",
         headerShown: false,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : colors.background,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          elevation: 0,
+          backgroundColor: "#0a0015",
+          borderTopWidth: 0,
+          elevation: 16,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.5,
+          shadowRadius: 12,
           ...(isWeb ? { height: 84 } : {}),
         },
-        tabBarBackground: () =>
-          isIOS ? (
-            <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill} />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
-          ),
+        tabBarBackground: () => (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0015" }]} />
+        ),
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontFamily: "Inter_600SemiBold",
+          letterSpacing: 0.2,
+        },
+        tabBarIndicatorStyle: { display: "none" },
       }}
     >
       <Tabs.Screen

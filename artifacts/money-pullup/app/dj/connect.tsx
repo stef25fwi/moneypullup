@@ -2,7 +2,9 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BottomTabBar, BOTTOM_TAB_BAR_HEIGHT } from "@/components/BottomTabBar";
 import { useColors } from "@/hooks/useColors";
 
 /**
@@ -14,11 +16,12 @@ import { useColors } from "@/hooks/useColors";
  */
 export default function ConnectReturn() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
 
   return (
     <>
       <Stack.Screen options={{ title: "Configuration Stripe" }} />
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: BOTTOM_TAB_BAR_HEIGHT + insets.bottom }]}>
         <View style={[styles.iconCircle, { backgroundColor: "#635BFF22", borderColor: "#635BFF" }]}>
           <MaterialCommunityIcons name="bank-check" size={36} color="#635BFF" />
         </View>
@@ -37,6 +40,8 @@ export default function ConnectReturn() {
           <Feather name="arrow-left" size={18} color={colors.primaryForeground} />
           <Text style={[styles.btnText, { color: colors.primaryForeground }]}>Retour au wallet DJ</Text>
         </TouchableOpacity>
+
+        <BottomTabBar />
       </View>
     </>
   );
