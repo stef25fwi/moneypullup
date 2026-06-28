@@ -12,16 +12,16 @@ function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "bolt", selected: "bolt.fill" }} />
-        <Label>Fan</Label>
+        <Icon sf={{ default: "square.grid.2x2", selected: "square.grid.2x2.fill" }} />
+        <Label>Dashboard</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="history">
+        <Icon sf={{ default: "heart", selected: "heart.fill" }} />
+        <Label>Tips</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="dj">
         <Icon sf={{ default: "music.note", selected: "music.note" }} />
         <Label>DJ</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="history">
-        <Icon sf={{ default: "clock", selected: "clock.fill" }} />
-        <Label>Historique</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person.circle", selected: "person.circle.fill" }} />
@@ -32,9 +32,8 @@ function NativeTabLayout() {
 }
 
 function ClassicTabLayout() {
-  const colors = useColors();
-  const isIOS = Platform.OS === "ios";
   const isWeb = (Platform.OS as string) === "web";
+  const isIOS = Platform.OS === "ios";
 
   return (
     <Tabs
@@ -61,18 +60,29 @@ function ClassicTabLayout() {
           fontFamily: "Inter_600SemiBold",
           letterSpacing: 0.2,
         },
-        tabBarIndicatorStyle: { display: "none" },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Fan",
+          title: "Dashboard",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="bolt" tintColor={color} size={24} />
+              <SymbolView name="square.grid.2x2" tintColor={color} size={24} />
             ) : (
-              <Feather name="zap" size={22} color={color} />
+              <MaterialCommunityIcons name="view-grid" size={24} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: "Tips",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="heart" tintColor={color} size={24} />
+            ) : (
+              <Feather name="heart" size={22} color={color} />
             ),
         }}
       />
@@ -85,18 +95,6 @@ function ClassicTabLayout() {
               <SymbolView name="music.note" tintColor={color} size={24} />
             ) : (
               <MaterialCommunityIcons name="music-circle" size={24} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: "Historique",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="clock" tintColor={color} size={24} />
-            ) : (
-              <Feather name="clock" size={22} color={color} />
             ),
         }}
       />
