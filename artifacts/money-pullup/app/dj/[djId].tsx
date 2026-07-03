@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomTabBar, BOTTOM_TAB_BAR_HEIGHT } from "@/components/BottomTabBar";
 import { BookingModal } from "@/components/BookingModal";
 import { GlassCard } from "@/components/GlassCard";
+import { GradientAmount } from "@/components/GradientAmount";
 import { GlowBackground } from "@/components/GlowBackground";
 import { RatingModal } from "@/components/RatingModal";
 import { TipButton } from "@/components/TipButton";
@@ -186,9 +187,7 @@ export default function DjFanPage() {
 
               {/* Amount display */}
               <View style={[styles.amountBox, { backgroundColor: colors.glassBackground, borderColor: colors.primary }]}>
-                <Text style={[styles.amountValue, { color: colors.primary }]}>
-                  {selectedAmount} €
-                </Text>
+                <GradientAmount value={selectedAmount} size={72} />
               </View>
 
               {/* Message */}
@@ -307,7 +306,6 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: "center",
   },
-  amountValue: { fontSize: 52, fontFamily: "Inter_700Bold", letterSpacing: -1 },
 
   messageInput: {
     borderWidth: 1,
