@@ -1,3 +1,4 @@
+import { FontAwesome } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from "react-native";
@@ -17,6 +18,10 @@ interface TipButtonProps {
   highlightColor: string;
   shadowColor: string;
   style?: ViewStyle;
+  /** Show an unselected coin as a hollow colored ring (selected stays filled). */
+  hollow?: boolean;
+  /** Show a star badge on the selected coin. */
+  showStar?: boolean;
 }
 
 export function TipButton({
@@ -27,6 +32,8 @@ export function TipButton({
   highlightColor,
   shadowColor,
   style,
+  hollow = false,
+  showStar = false,
 }: TipButtonProps) {
   const scale = useSharedValue(1);
   const glowOpacity = useSharedValue(isSelected ? 1 : 0.55);
@@ -49,31 +56,42 @@ export function TipButton({
     onPress(amount);
   }, [amount, onPress, scale, glowOpacity]);
 
+  const filled = isSelected || !hollow;
+
   return (
     <Animated.View
       style={[
         styles.wrapper,
         {
           shadowColor,
-          shadowOpacity: isSelected ? 0.9 : 0.55,
+          shadowOpacity: isSelected ? 0.9 : hollow ? 0.3 : 0.55,
         },
         animStyle,
         style,
       ]}
     >
       <TouchableOpacity onPress={handlePress} activeOpacity={0.9} style={styles.touchable}>
-        <LinearGradient
-          colors={[highlightColor, color, shadowColor]}
-          start={{ x: 0.3, y: 0 }}
-          end={{ x: 0.7, y: 1 }}
-          style={[
-            styles.coin,
-            isSelected && { borderWidth: 3, borderColor: "#FFFFFF" },
-          ]}
-        >
-          <View style={styles.shine} />
-          <Text style={styles.amount}>{amount}€</Text>
-        </LinearGradient>
+        {filled ? (
+          <LinearGradient
+            colors={[highlightColor, color, shadowColor]}
+            start={{ x: 0.3, y: 0 }}
+            end={{ x: 0.7, y: 1 }}
+            style={[styles.coin, isSelected && { borderWidth: 3, borderColor: "#FFFFFF" }]}
+          >
+            <View style={styles.shine} />
+            <Text style={styles.amount}>{amount}€</Text>
+          </LinearGradient>
+        ) : (
+          <View style={[styles.coin, styles.hollowCoin, { borderColor: color }]}>
+            <Text style={[styles.amount, styles.hollowAmount, { color }]}>{amount}€</Text>
+          </View>
+        )}
+
+        {showStar && isSelected && (
+          <View style={styles.starBadge}>
+            <FontAwesome name="star" size={11} color="#fff" />
+          </View>
+        )}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -106,6 +124,10 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     backgroundColor: "rgba(255,255,255,0.35)",
   },
+  hollowCoin: {
+    borderWidth: 2.5,
+    backgroundColor: "rgba(10,4,26,0.55)",
+  },
   amount: {
     fontSize: 22,
     fontFamily: "Inter_700Bold",
@@ -114,5 +136,21 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
     letterSpacing: -0.5,
+  },
+  hollowAmount: {
+    textShadowColor: "transparent",
+  },
+  starBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#2E86FF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#0A041A",
   },
 });

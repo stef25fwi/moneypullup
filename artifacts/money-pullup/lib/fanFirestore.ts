@@ -1,7 +1,11 @@
 import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { firestore, isFirebaseConfigured } from "@/lib/firebase";
 
+export type AccountRole = "fan" | "dj";
+
 export interface FanProfile {
+  /** Account-level role chosen after login; persisted so it survives reloads. */
+  role?: AccountRole;
   name?: string;
   avatar?: string;
   email?: string;
@@ -17,6 +21,7 @@ export interface FanProfile {
 }
 
 export interface FanProfileUpdate {
+  role?: AccountRole;
   name?: string;
   avatar?: string;
   email?: string;

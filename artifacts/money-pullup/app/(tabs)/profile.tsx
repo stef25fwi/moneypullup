@@ -1,4 +1,4 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -29,11 +29,10 @@ import {
   signOutUser,
   signUpWithEmail,
 } from "@/lib/firebase";
-import { subscribeFanProfile, updateFanProfile, type FanProfile } from "@/lib/fanFirestore";
-import { subscribeDjProfile, updateDjProfile, type DjProfile } from "@/lib/djFirestore";
+import { subscribeFanProfile, updateFanProfile, type AccountRole } from "@/lib/fanFirestore";
 
 type Mode = "login" | "register";
-type Role = "fan" | "dj" | null;
+type Role = AccountRole | null;
 
 function errorMessage(code: string): string {
   const map: Record<string, string> = {
@@ -161,256 +160,7 @@ function RoleSelector({ uid, email, onSelectRole }: { uid: string; email: string
   );
 }
 
-/* ─── Fan profile form ─── */
-function FanProfileForm({ uid, email, onBack }: { uid: string; email: string | null; onBack: () => void }) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const [profile, setProfile] = useState<FanProfile | null>(null);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    return subscribeFanProfile(uid, setProfile);
-  }, [uid]);
-
-  useEffect(() => {
-    if (profile) {
-      setName(profile.name ?? "");
-      setPhone(profile.phone ?? "");
-      setCity(profile.city ?? "");
-    }
-  }, [profile]);
-
-  const handleSave = async () => {
-    setBusy(true);
-    try {
-      await updateFanProfile(uid, { name, phone, city });
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Succès", "Profil Fan mis à jour ✓");
-    } catch (e) {
-      Alert.alert("Erreur", "Impossible de sauvegarder le profil.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <GlowBackground />
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 90 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header with back */}
-        <View style={styles.formHeader}>
-          <TouchableOpacity onPress={onBack}>
-            <Feather name="arrow-left" size={24} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={[styles.formTitle, { color: colors.foreground }]}>Profil Fan</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
-        {/* Form fields */}
-        <View style={[styles.formCard, { borderColor: colors.border }]}>
-          {/* Name */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Nom</Text>
-            <TextInput
-              style={[styles.textInput, { backgroundColor: colors.card, color: colors.foreground, borderColor: colors.border }]}
-              value={name}
-              onChangeText={setName}
-              placeholder="Votre nom"
-              placeholderTextColor={colors.mutedForeground}
-            />
-          </View>
-
-          {/* Phone */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Téléphone</Text>
-            <TextInput
-              style={[styles.textInput, { backgroundColor: colors.card, color: colors.foreground, borderColor: colors.border }]}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+33 6 XX XX XX XX"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          {/* City */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Ville</Text>
-            <TextInput
-              style={[styles.textInput, { backgroundColor: colors.card, color: colors.foreground, borderColor: colors.border }]}
-              value={city}
-              onChangeText={setCity}
-              placeholder="Votre ville"
-              placeholderTextColor={colors.mutedForeground}
-            />
-          </View>
-        </View>
-
-        {/* Save button */}
-        <TouchableOpacity onPress={handleSave} disabled={busy} style={styles.ctaWrap}>
-          <LinearGradient colors={["#FF2D78", "#C0004A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
-            {busy ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Feather name="save" size={18} color="#fff" />
-                <Text style={styles.ctaText}>Sauvegarder</Text>
-              </>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
-}
-
-/* ─── DJ profile form ─── */
-function DjProfileForm({ uid, email, onBack }: { uid: string; email: string | null; onBack: () => void }) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const [profile, setProfile] = useState<DjProfile | null>(null);
-  const [name, setName] = useState("");
-  const [bio, setBio] = useState("");
-  const [genres, setGenres] = useState("");
-  const [city, setCity] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    return subscribeDjProfile(uid, setProfile);
-  }, [uid]);
-
-  useEffect(() => {
-    if (profile) {
-      setName(profile.name ?? "");
-      setBio(profile.bio ?? "");
-      setGenres(profile.genres?.join(", ") ?? "");
-      setCity(profile.city ?? "");
-    }
-  }, [profile]);
-
-  const handleSave = async () => {
-    setBusy(true);
-    try {
-      await updateDjProfile(uid, {
-        name,
-        bio,
-        genres: genres.split(",").map((g) => g.trim()).filter(Boolean),
-        city,
-      });
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Succès", "Profil DJ mis à jour ✓");
-    } catch (e) {
-      Alert.alert("Erreur", "Impossible de sauvegarder le profil.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <GlowBackground />
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 90 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header with back */}
-        <View style={styles.formHeader}>
-          <TouchableOpacity onPress={onBack}>
-            <Feather name="arrow-left" size={24} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={[styles.formTitle, { color: colors.foreground }]}>Profil DJ</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
-        {/* Form fields */}
-        <View style={[styles.formCard, { borderColor: colors.border }]}>
-          {/* Name */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Nom d'artiste</Text>
-            <TextInput
-              style={[styles.textInput, { backgroundColor: colors.card, color: colors.foreground, borderColor: colors.border }]}
-              value={name}
-              onChangeText={setName}
-              placeholder="Votre nom de DJ"
-              placeholderTextColor={colors.mutedForeground}
-            />
-          </View>
-
-          {/* Genres */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Genres musicaux</Text>
-            <TextInput
-              style={[styles.textInput, { backgroundColor: colors.card, color: colors.foreground, borderColor: colors.border }]}
-              value={genres}
-              onChangeText={setGenres}
-              placeholder="House, Techno, Deep House (séparés par des virgules)"
-              placeholderTextColor={colors.mutedForeground}
-              multiline
-            />
-          </View>
-
-          {/* City */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Ville</Text>
-            <TextInput
-              style={[styles.textInput, { backgroundColor: colors.card, color: colors.foreground, borderColor: colors.border }]}
-              value={city}
-              onChangeText={setCity}
-              placeholder="Votre ville"
-              placeholderTextColor={colors.mutedForeground}
-            />
-          </View>
-
-          {/* Bio */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Bio</Text>
-            <TextInput
-              style={[styles.textInput, { backgroundColor: colors.card, color: colors.foreground, borderColor: colors.border, height: 100 }]}
-              value={bio}
-              onChangeText={setBio}
-              placeholder="Décrivez-vous en quelques lignes..."
-              placeholderTextColor={colors.mutedForeground}
-              multiline
-              textAlignVertical="top"
-            />
-          </View>
-        </View>
-
-        {/* Save button */}
-        <TouchableOpacity onPress={handleSave} disabled={busy} style={styles.ctaWrap}>
-          <LinearGradient colors={["#FF2D78", "#C0004A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
-            {busy ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Feather name="save" size={18} color="#fff" />
-                <Text style={styles.ctaText}>Sauvegarder</Text>
-              </>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
-}
-
 /* ─── Main component ─── */
-type AuthState = "unauthenticated" | "authenticated" | "profile";
-
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -423,7 +173,9 @@ export default function ProfileScreen() {
   const [uid, setUid] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(true);
-  const [selectedRole, setSelectedRole] = useState<Role>(null);
+  const [role, setRole] = useState<Role>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
+  const [roleBusy, setRoleBusy] = useState(false);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
@@ -435,6 +187,41 @@ export default function ProfileScreen() {
       setIsAnonymous(user?.isAnonymous ?? true);
     });
   }, []);
+
+  // Persisted role: read once per authenticated session so a returning user
+  // is routed straight to their profile instead of re-picking Fan/DJ.
+  useEffect(() => {
+    if (!uid || isAnonymous) {
+      setRole(null);
+      setRoleLoading(true);
+      return;
+    }
+    setRoleLoading(true);
+    return subscribeFanProfile(uid, (profile) => {
+      setRole(profile?.role ?? null);
+      setRoleLoading(false);
+    });
+  }, [uid, isAnonymous]);
+
+  // Once a role is known, this screen is just a gateway — hand off to the
+  // full profile page that actually owns editing for that role.
+  useEffect(() => {
+    if (roleLoading || !role) return;
+    router.replace(role === "fan" ? "/fan/profile" : "/dj/profile");
+  }, [role, roleLoading]);
+
+  const handleSelectRole = async (picked: Role) => {
+    if (!uid || !picked) return;
+    setRoleBusy(true);
+    try {
+      await updateFanProfile(uid, { role: picked });
+      setRole(picked);
+    } catch {
+      Alert.alert("Erreur", "Impossible d'enregistrer votre rôle. Réessayez.");
+    } finally {
+      setRoleBusy(false);
+    }
+  };
 
   const shake = () => {
     Animated.sequence([
@@ -598,22 +385,24 @@ export default function ProfileScreen() {
     );
   }
 
-  // State 2: Authenticated - role selection
-  if (!selectedRole) {
-    return <RoleSelector uid={uid} email={userEmail} onSelectRole={setSelectedRole} />;
+  // State 2: Authenticated, role not yet known/picked, or busy redirecting.
+  if (roleLoading || role || roleBusy) {
+    return (
+      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+        <GlowBackground />
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
   }
 
-  // State 3: Role selected - show form
-  if (selectedRole === "fan") {
-    return <FanProfileForm uid={uid} email={userEmail} onBack={() => setSelectedRole(null)} />;
-  }
-
-  return <DjProfileForm uid={uid} email={userEmail} onBack={() => setSelectedRole(null)} />;
+  // State 3: Authenticated, no role saved yet — let the user pick one.
+  return <RoleSelector uid={uid} email={userEmail} onSelectRole={handleSelectRole} />;
 }
 
 /* ─── STYLES ─── */
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  centered: { alignItems: "center", justifyContent: "center" },
   scroll: { paddingHorizontal: 24, alignItems: "stretch", gap: 16 },
 
   /* Login form */
@@ -664,11 +453,4 @@ const styles = StyleSheet.create({
 
   logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14, borderWidth: 1 },
   logoutText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#EF4444" },
-
-  /* Profile forms */
-  formHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 },
-  formTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  fieldGroup: { gap: 8, marginBottom: 16 },
-  label: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  textInput: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, fontFamily: "Inter_400Regular" },
 });
