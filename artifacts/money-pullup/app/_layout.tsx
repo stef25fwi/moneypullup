@@ -6,7 +6,6 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { StripeProvider } from "@stripe/stripe-react-native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
@@ -14,6 +13,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { AppStripeProvider } from "@/components/AppStripeProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TipsProvider } from "@/contexts/TipsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -61,7 +61,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <ThemeProvider>
-          <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+          <AppStripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
             <QueryClientProvider client={queryClient}>
               <TipsProvider>
                 <GestureHandlerRootView>
@@ -71,7 +71,7 @@ export default function RootLayout() {
                 </GestureHandlerRootView>
               </TipsProvider>
             </QueryClientProvider>
-          </StripeProvider>
+          </AppStripeProvider>
         </ThemeProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
