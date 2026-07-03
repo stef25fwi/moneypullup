@@ -13,6 +13,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -23,7 +24,7 @@ import { BottomTabBar, BOTTOM_TAB_BAR_HEIGHT } from "@/components/BottomTabBar";
 import { useDjWallet } from "@/hooks/useDjWallet";
 import { firebaseAuth, isFirebaseConfigured } from "@/lib/firebase";
 import { subscribeDjBookings } from "@/lib/bookings";
-import { subscribeDjProfile, type DjProfile } from "@/lib/djFirestore";
+import { subscribeDjProfile, updateDjProfile, type DjProfile } from "@/lib/djFirestore";
 import { generateTipStatement, type TipStatement } from "@/lib/tipFunctions";
 import { subscribeReceivedTipsForDj, type StreamTip } from "@/lib/tipStream";
 
@@ -79,6 +80,7 @@ export default function DjProfilePage() {
   const [profile, setProfile] = useState<DjProfile | null>(null);
   const [tips, setTips] = useState<StreamTip[]>([]);
   const [eventsCount, setEventsCount] = useState(0);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -104,6 +106,7 @@ export default function DjProfilePage() {
   const selectTab = useCallback((t: SubTab) => {
     if (Platform.OS !== "web") Haptics.selectionAsync();
     setTab(t);
+    setEditing(false);
   }, []);
 
   const titleForTab: Record<SubTab, string> = {
@@ -122,10 +125,18 @@ export default function DjProfilePage() {
         <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
           <Feather name="arrow-left" size={22} color={C.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{titleForTab[tab]}</Text>
+        <Text style={styles.headerTitle}>
+          {tab === "profil" && editing ? "Modifier le profil" : titleForTab[tab]}
+        </Text>
         {tab === "profil" ? (
-          <TouchableOpacity style={styles.headerBtn}>
-            <Feather name="more-vertical" size={20} color={C.text} />
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.selectionAsync();
+              setEditing((v) => !v);
+            }}
+          >
+            <Feather name={editing ? "x" : "edit-2"} size={20} color={C.text} />
           </TouchableOpacity>
         ) : tab === "tips" ? (
           <TouchableOpacity style={styles.headerBtn}>
@@ -160,7 +171,14 @@ export default function DjProfilePage() {
         showsVerticalScrollIndicator={false}
       >
         {tab === "profil" && (
-          <ProfilTab profile={profile} wallet={wallet} eventsCount={eventsCount} />
+          <ProfilTab
+            djId={djId}
+            profile={profile}
+            wallet={wallet}
+            eventsCount={eventsCount}
+            editing={editing}
+            onDoneEditing={() => setEditing(false)}
+          />
         )}
         {tab === "tips" && <TipsTab tips={tips} onGenerate={() => setTab("justificatifs")} />}
         {tab === "justificatifs" && (
@@ -177,14 +195,24 @@ export default function DjProfilePage() {
 /* ───────────────────────── 1. PROFIL ───────────────────────── */
 
 function ProfilTab({
+  djId,
   profile,
   wallet,
   eventsCount,
+  editing,
+  onDoneEditing,
 }: {
+  djId: string | null;
   profile: DjProfile | null;
   wallet: ReturnType<typeof useDjWallet>;
   eventsCount: number;
+  editing: boolean;
+  onDoneEditing: () => void;
 }) {
+  if (editing) {
+    return <ProfilEditForm djId={djId} profile={profile} onDone={onDoneEditing} />;
+  }
+
   const name = profile?.name || "DJ Heat";
   const city = profile?.city || "—";
   const bio = profile?.bio || "DJ open-format pour clubs, mariages et événements privés.";
@@ -261,20 +289,17 @@ function ProfilTab({
         </View>
       </View>
 
-      {/* Actions */}
-      <TouchableOpacity activeOpacity={0.85} style={styles.primaryBtn}>
-        <Feather name="gift" size={17} color="#fff" />
-        <Text style={styles.primaryBtnText}>Envoyer un tip</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity activeOpacity={0.85} style={styles.goldOutlineBtn}>
-        <MaterialCommunityIcons name="calendar-check" size={17} color={C.gold} />
-        <Text style={styles.goldOutlineBtnText}>Réserver</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity activeOpacity={0.85} style={styles.outlineBtn}>
-        <Feather name="message-circle" size={17} color={C.text} />
-        <Text style={styles.outlineBtnText}>Message</Text>
+      {/* Actions — this is the DJ's own profile, so actions are self-management, not fan-facing. */}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={styles.primaryBtn}
+        onPress={() => {
+          if (Platform.OS !== "web") Haptics.selectionAsync();
+          if (djId) router.navigate({ pathname: "/dj/[djId]", params: { djId } });
+        }}
+      >
+        <Feather name="eye" size={17} color="#fff" />
+        <Text style={styles.primaryBtnText}>Voir mon profil public</Text>
       </TouchableOpacity>
 
       {/* Infos pro */}
@@ -308,6 +333,126 @@ function InfoRow({ label, value, ok }: { label: string; value: string; ok?: bool
         <Text style={styles.infoValue}>{value}</Text>
         {ok && <Feather name="check" size={13} color={C.green} />}
       </View>
+    </View>
+  );
+}
+
+function ProfilEditForm({
+  djId,
+  profile,
+  onDone,
+}: {
+  djId: string | null;
+  profile: DjProfile | null;
+  onDone: () => void;
+}) {
+  const [name, setName] = useState(profile?.name ?? "");
+  const [city, setCity] = useState(profile?.city ?? "");
+  const [bio, setBio] = useState(profile?.bio ?? "");
+  const [genres, setGenres] = useState(profile?.genres?.join(", ") ?? "");
+  const [proStatus, setProStatus] = useState(profile?.proStatus ?? "");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!profile) return;
+    setName(profile.name ?? "");
+    setCity(profile.city ?? "");
+    setBio(profile.bio ?? "");
+    setGenres(profile.genres?.join(", ") ?? "");
+    setProStatus(profile.proStatus ?? "");
+  }, [profile]);
+
+  const handleSave = useCallback(async () => {
+    if (!djId) {
+      Alert.alert("Indisponible", "Connectez-vous en tant que DJ pour modifier votre profil.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await updateDjProfile(djId, {
+        name: name.trim(),
+        city: city.trim(),
+        bio: bio.trim(),
+        genres: genres.split(",").map((g) => g.trim()).filter(Boolean),
+        proStatus: proStatus.trim(),
+      });
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onDone();
+    } catch {
+      Alert.alert("Erreur", "Impossible de sauvegarder le profil.");
+    } finally {
+      setBusy(false);
+    }
+  }, [djId, name, city, bio, genres, proStatus, onDone]);
+
+  return (
+    <Animated.View entering={FadeIn.duration(200)} style={styles.tabContent}>
+      <View style={styles.editCard}>
+        <EditField label="Nom d'artiste" value={name} onChange={setName} placeholder="DJ Heat" />
+        <EditField label="Ville" value={city} onChange={setCity} placeholder="Guadeloupe" />
+        <EditField
+          label="Styles musicaux"
+          value={genres}
+          onChange={setGenres}
+          placeholder="Zouk, Afro, Dancehall (séparés par des virgules)"
+        />
+        <EditField
+          label="Bio courte"
+          value={bio}
+          onChange={setBio}
+          placeholder="DJ open-format pour clubs, mariages et événements privés."
+          multiline
+        />
+        <EditField
+          label="Statut professionnel"
+          value={proStatus}
+          onChange={setProStatus}
+          placeholder="Micro-entrepreneur"
+        />
+      </View>
+
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={handleSave}
+        disabled={busy}
+        style={[styles.primaryBtn, { opacity: busy ? 0.7 : 1 }]}
+      >
+        {busy ? <ActivityIndicator color="#fff" size="small" /> : <Feather name="check" size={17} color="#fff" />}
+        <Text style={styles.primaryBtnText}>{busy ? "Enregistrement…" : "Enregistrer"}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity activeOpacity={0.85} onPress={onDone} style={styles.outlineBtn}>
+        <Text style={styles.outlineBtnText}>Annuler</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+function EditField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  multiline?: boolean;
+}) {
+  return (
+    <View style={styles.editField}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        placeholder={placeholder}
+        placeholderTextColor={C.muted}
+        multiline={multiline}
+        textAlignVertical={multiline ? "top" : "center"}
+        style={[styles.editInput, multiline && { height: 90 }]}
+      />
     </View>
   );
 }
@@ -814,18 +959,6 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
 
-  goldOutlineBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: C.gold,
-  },
-  goldOutlineBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: C.gold },
-
   outlineBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -849,6 +982,27 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: C.cardBorder,
+  },
+
+  editCard: {
+    padding: 16,
+    gap: 16,
+    backgroundColor: C.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  editField: { gap: 6 },
+  editInput: {
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: C.text,
+    backgroundColor: "rgba(255,255,255,0.03)",
   },
   infoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   infoLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: C.muted },

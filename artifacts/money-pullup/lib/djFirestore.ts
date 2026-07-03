@@ -45,6 +45,7 @@ export interface DjProfileUpdate {
   city?: string;
   bio?: string;
   genres?: string[];
+  proStatus?: string;
 }
 
 /** Persists partial DJ profile fields to Firestore `djs/{djId}`. No-op when Firebase is not configured. */
