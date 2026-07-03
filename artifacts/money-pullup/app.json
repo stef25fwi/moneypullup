@@ -20,7 +20,9 @@
       "backgroundColor": "#0d0018"
     },
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/icon.png",
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": [
       [

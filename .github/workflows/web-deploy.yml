@@ -1,0 +1,80 @@
+name: Deploy Web App
+
+# Builds the Expo web export for artifacts/money-pullup and deploys it to
+# Firebase Hosting (project money-pull-up-5378b, default site → money-pull-up-5378b.web.app).
+# EXPO_PUBLIC_* values are inlined into the bundle at export time, so they are
+# provided here as env from repository secrets. Runs on main when the app
+# changes, or manually via "Run workflow".
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "artifacts/money-pullup/**"
+      - ".github/workflows/web-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: web-deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Export web bundle
+        working-directory: artifacts/money-pullup
+        env:
+          # Public, derivable-from-project constants — safe to hardcode.
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: money-pull-up-5378b.firebaseapp.com
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: money-pull-up-5378b
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: money-pull-up-5378b.appspot.com
+          EXPO_PUBLIC_CGU_URL: https://moneypullup.app/cgu
+          EXPO_PUBLIC_PRIVACY_URL: https://moneypullup.app/confidentialite
+          EXPO_PUBLIC_LEGAL_URL: https://moneypullup.app/mentions-legales
+          # Provided via repository secrets.
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+          EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+          EXPO_PUBLIC_WEB_URL: ${{ secrets.EXPO_PUBLIC_WEB_URL }}
+        run: pnpm exec expo export --platform web --output-dir dist
+
+      - name: Write service account credentials
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+
+      - name: Deploy to Firebase Hosting
+        working-directory: artifacts/money-pullup
+        run: >
+          npx --yes firebase-tools@14 deploy
+          --only hosting
+          --project money-pull-up-5378b
+          --non-interactive
+          --force
+
+      - name: Clean up credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
