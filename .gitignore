@@ -70,3 +70,4 @@ artifacts/money-pullup-flutter/*.iml
 artifacts/money-pullup-flutter/android/*.iml
 artifacts/money-pullup-flutter/ios/Flutter/ephemeral/
 artifacts/money-pullup-flutter/macos/Flutter/ephemeral/
+artifacts/money-pullup-flutter/android/app/google-services.json
